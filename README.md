@@ -1,4 +1,4 @@
 # cpp_lox
 
 CMake version: 3.26.4
-GCC version: 13
+Clang version: 16.0.4
