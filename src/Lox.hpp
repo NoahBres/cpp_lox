@@ -13,8 +13,17 @@ class Lox {
 
 public:
   auto run(const std::string &source) -> void {
+    std::cout << "Scanning" << '\n';
     auto scanner = lox::Scanner{source};
     auto tokens = scanner.scanTokens();
+
+    std::cout << "Tokens:" << std::endl;
+    for (auto token : tokens) {
+      std::cout << token.toString() << std::endl;
+    }
+    std::cout << "" << std::endl;
+
+    std::cout << "Parsing" << '\n';
     auto parser = lox::Parser{tokens};
     auto expression = parser.parse();
 

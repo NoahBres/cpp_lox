@@ -51,8 +51,15 @@ class Parser {
     return peek().type == type;
   }
 
-  auto match(auto a, std::same_as<decltype(a)> auto... b) -> bool {
-    return (check(a) && (check(b) && ... && (advance(), true)));
+  auto match(std::initializer_list<TokenType> types) {
+    for (TokenType type : types) {
+      if (check(type)) {
+        advance();
+        return true;
+      }
+    }
+
+    return false;
   }
 
   auto expression() -> std::shared_ptr<Expr> { return equality(); }
@@ -60,7 +67,7 @@ class Parser {
   auto equality() -> std::shared_ptr<Expr> {
     auto expr = comparison();
 
-    while (match(TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL)) {
+    while (match({TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL})) {
       auto op = previous();
       auto right = comparison();
       expr = std::make_shared<Binary>(expr, op, right);
@@ -72,8 +79,8 @@ class Parser {
   auto comparison() -> std::shared_ptr<Expr> {
     auto expr = term();
 
-    while (match(TokenType::GREATER, TokenType::GREATER_EQUAL, TokenType::LESS,
-                 TokenType::LESS_EQUAL)) {
+    while (match({TokenType::GREATER, TokenType::GREATER_EQUAL, TokenType::LESS,
+                  TokenType::LESS_EQUAL})) {
       auto op = previous();
       auto right = term();
       expr = std::make_shared<Binary>(expr, op, right);
@@ -85,7 +92,7 @@ class Parser {
   auto term() -> std::shared_ptr<Expr> {
     auto expr = factor();
 
-    while (match(TokenType::MINUS, TokenType::PLUS)) {
+    while (match({TokenType::MINUS, TokenType::PLUS})) {
       auto op = previous();
       auto right = factor();
       expr = std::make_shared<Binary>(expr, op, right);
@@ -97,7 +104,7 @@ class Parser {
   auto factor() -> std::shared_ptr<Expr> {
     auto expr = unary();
 
-    while (match(TokenType::SLASH, TokenType::STAR)) {
+    while (match({TokenType::SLASH, TokenType::STAR})) {
       auto op = previous();
       auto right = unary();
       expr = std::make_shared<Binary>(expr, op, right);
@@ -107,7 +114,7 @@ class Parser {
   }
 
   auto unary() -> std::shared_ptr<Expr> {
-    if (match(TokenType::BANG, TokenType::MINUS)) {
+    if (match({TokenType::BANG, TokenType::MINUS})) {
       auto op = previous();
       auto right = unary();
       return std::make_shared<Unary>(op, right);
@@ -117,17 +124,17 @@ class Parser {
   }
 
   auto primary() -> std::shared_ptr<Expr> {
-    if (match(TokenType::FALSE))
+    if (match({TokenType::FALSE}))
       return std::make_shared<Literal>(false);
-    if (match(TokenType::TRUE))
+    if (match({TokenType::TRUE}))
       return std::make_shared<Literal>(true);
-    if (match(TokenType::NIL))
+    if (match({TokenType::NIL}))
       return std::make_shared<Literal>(nullptr);
 
-    if (match(TokenType::NUMBER, TokenType::STRING))
+    if (match({TokenType::NUMBER, TokenType::STRING}))
       return std::make_shared<Literal>(previous().literal);
 
-    if (match(TokenType::LEFT_PAREN)) {
+    if (match({TokenType::LEFT_PAREN})) {
       auto expr = expression();
       consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
       return std::make_shared<Grouping>(expr);
