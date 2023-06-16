@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AstPrinter.hpp"
 #include "Parser.hpp"
 #include "Scanner.hpp"
 #include <fstream>
@@ -30,7 +31,7 @@ public:
     if (had_error || !expression)
       return;
 
-    // std::cout << lox::AstPrinter{}.print(expression.value()) << '\n';
+    std::cout << lox::AstPrinter{}.print(*expression) << '\n';
   }
 
   auto runFile(const std::string &filePath) -> void {

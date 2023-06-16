@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <memory>
 #include <vector>
 
@@ -7,168 +8,178 @@
 
 namespace lox {
 
-// Forward declarations
-struct Assign;
-struct Binary;
-struct Call;
-struct Get;
-struct Grouping;
-struct Literal;
-struct Logical;
-struct Set;
-struct Super;
-struct This;
-struct Unary;
-struct Variable;
+// #region Forward declarations
+class Assign;
+class Binary;
+class Call;
+class Get;
+class Grouping;
+class Literal;
+class Logical;
+class Set;
+class Super;
+class This;
+class Unary;
+class Variable;
+
+class Visitor;
+// #endregion
 
 struct Expr {
   virtual ~Expr() = default;
+  virtual std::any accept(Visitor &visitor) = 0;
+};
 
-  class Visitor {
-  public:
-    virtual void visitAssignExpr(const Assign &) = 0;
-    virtual void visitBinaryExpr(const Binary &) = 0;
-    virtual void visitCallExpr(const Call &) = 0;
-    virtual void visitGetExpr(const Get &) = 0;
-    virtual void visitGroupingExpr(const Grouping &) = 0;
-    virtual void visitLiteralExpr(const Literal &) = 0;
-    virtual void visitLogicalExpr(const Logical &) = 0;
-    virtual void visitSetExpr(const Set &) = 0;
-    virtual void visitSuperExpr(const Super &) = 0;
-    virtual void visitThisExpr(const This &) = 0;
-    virtual void visitUnaryExpr(const Unary &) = 0;
-    virtual void visitVariableExpr(const Variable &) = 0;
-  };
-
-  virtual void accept(Visitor &) const {};
+class Visitor {
+public:
+  virtual std::any visitAssignExpr(const Assign &) = 0;
+  virtual std::any visitBinaryExpr(const Binary &) = 0;
+  virtual std::any visitCallExpr(const Call &) = 0;
+  virtual std::any visitGetExpr(const Get &) = 0;
+  virtual std::any visitGroupingExpr(const Grouping &) = 0;
+  virtual std::any visitLiteralExpr(const Literal &) = 0;
+  virtual std::any visitLogicalExpr(const Logical &) = 0;
+  virtual std::any visitSetExpr(const Set &) = 0;
+  virtual std::any visitSuperExpr(const Super &) = 0;
+  virtual std::any visitThisExpr(const This &) = 0;
+  virtual std::any visitUnaryExpr(const Unary &) = 0;
+  virtual std::any visitVariableExpr(const Variable &) = 0;
 };
 
 struct Assign : public Expr {
-  const Token name;
-  const std::shared_ptr<Expr> value;
+  Token const name;
+  std::shared_ptr<Expr> const value;
 
   Assign(Token name, std::shared_ptr<Expr> value) : name{name}, value{value} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitAssignExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitAssignExpr(*this);
   }
 };
 
 struct Binary : public Expr {
-  const std::shared_ptr<Expr> left;
-  const std::shared_ptr<Expr> right;
-  const Token op;
+  std::shared_ptr<Expr> const left;
+  std::shared_ptr<Expr> const right;
+  Token const op;
 
   Binary(std::shared_ptr<Expr> left, Token op, std::shared_ptr<Expr> right)
       : left{left}, op{op}, right{right} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitBinaryExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitBinaryExpr(*this);
   }
 };
 
 struct Call : public Expr {
-  const std::shared_ptr<Expr> callee;
-  const std::vector<std::shared_ptr<Expr>> arguments;
-  const Token paren;
+  std::shared_ptr<Expr> const callee;
+  std::vector<std::shared_ptr<Expr>> const arguments;
+  Token const paren;
 
   Call(std::shared_ptr<Expr> callee, Token paren,
        std::vector<std::shared_ptr<Expr>> arguments)
       : callee{callee}, paren{paren}, arguments{arguments} {}
 
-  void accept(Visitor &visitor) const override { visitor.visitCallExpr(*this); }
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitCallExpr(*this);
+  }
 };
 
 struct Get : public Expr {
-  const std::shared_ptr<Expr> object;
-  const Token name;
+  std::shared_ptr<Expr> const object;
+  Token const name;
 
   Get(std::shared_ptr<Expr> object, Token name) : object{object}, name{name} {}
 
-  void accept(Visitor &visitor) const override { visitor.visitGetExpr(*this); }
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitGetExpr(*this);
+  }
 };
 
 struct Grouping : public Expr {
-  const std::shared_ptr<Expr> expression;
+  std::shared_ptr<Expr> const expression;
 
   Grouping(std::shared_ptr<Expr> expression) : expression{expression} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitGroupingExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitGroupingExpr(*this);
   }
 };
 
 struct Literal : public Expr {
-  const std::any value;
+  std::any const value;
 
   Literal(std::any value) : value{value} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitLiteralExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitLiteralExpr(*this);
   }
 };
 
 struct Logical : public Expr {
-  const std::shared_ptr<Expr> left;
-  const std::shared_ptr<Expr> right;
-  const Token op;
+  std::shared_ptr<Expr> const left;
+  std::shared_ptr<Expr> const right;
+  Token const op;
 
   Logical(std::shared_ptr<Expr> left, Token op, std::shared_ptr<Expr> right)
       : left{left}, op{op}, right{right} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitLogicalExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitLogicalExpr(*this);
   }
 };
 
 struct Set : public Expr {
-  const std::shared_ptr<Expr> object;
-  const std::shared_ptr<Expr> value;
-  const Token name;
+  std::shared_ptr<Expr> const object;
+  std::shared_ptr<Expr> const value;
+  Token const name;
 
   Set(std::shared_ptr<Expr> object, Token name, std::shared_ptr<Expr> value)
       : object{object}, name{name}, value{value} {}
 
-  void accept(Visitor &visitor) const override { visitor.visitSetExpr(*this); }
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitSetExpr(*this);
+  }
 };
 
 struct Super : public Expr {
-  const Token keyword;
-  const Token method;
+  Token const keyword;
+  Token const method;
 
   Super(Token keyword, Token method) : keyword{keyword}, method{method} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitSuperExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitSuperExpr(*this);
   }
 };
 
 struct This : public Expr {
-  const Token keyword;
+  Token const keyword;
 
   This(Token keyword) : keyword{keyword} {}
 
-  void accept(Visitor &visitor) const override { visitor.visitThisExpr(*this); }
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitThisExpr(*this);
+  }
 };
 
 struct Unary : public Expr {
-  const std::shared_ptr<Expr> right;
-  const Token op;
+  std::shared_ptr<Expr> const right;
+  Token const op;
 
   Unary(Token op, std::shared_ptr<Expr> right) : op{op}, right{right} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitUnaryExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitUnaryExpr(*this);
   }
 };
 
 struct Variable : public Expr {
-  const Token name;
+  Token const name;
 
   Variable(Token name) : name{name} {}
 
-  void accept(Visitor &visitor) const override {
-    visitor.visitVariableExpr(*this);
+  std::any accept(Visitor &visitor) override {
+    return visitor.visitVariableExpr(*this);
   }
 };
 
