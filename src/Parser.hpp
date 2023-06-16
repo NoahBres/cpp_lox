@@ -139,6 +139,8 @@ class Parser {
       consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
       return std::make_shared<Grouping>(expr);
     }
+
+    throw generateParserError(peek(), "Expect expression.");
   }
 
   auto consume(TokenType type, std::string message) -> Token {
