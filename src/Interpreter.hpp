@@ -73,7 +73,7 @@ private:
       return std::string("nil");
 
     if (obj.type() == typeid(double)) {
-      auto text = std::any_cast<std::string>(obj);
+      auto text = std::to_string(std::any_cast<double>(obj));
       if (text.ends_with(".0"))
         text = text.substr(0, text.length() - 2);
 
