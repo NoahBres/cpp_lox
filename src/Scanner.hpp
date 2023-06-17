@@ -121,80 +121,82 @@ private:
   auto scanToken() -> void {
     char c = advance();
     switch (c) {
-    case '(':
-      addToken(lox::TokenType::LEFT_PAREN);
-      break;
-    case ')':
-      addToken(lox::TokenType::RIGHT_PAREN);
-      break;
-    case '{':
-      addToken(lox::TokenType::LEFT_BRACE);
-      break;
-    case '}':
-      addToken(lox::TokenType::RIGHT_BRACE);
-      break;
-    case ',':
-      addToken(lox::TokenType::COMMA);
-      break;
-    case '.':
-      addToken(lox::TokenType::DOT);
-      break;
-    case '-':
-      addToken(lox::TokenType::MINUS);
-      break;
-    case '+':
-      addToken(lox::TokenType::PLUS);
-      break;
-    case ';':
-      addToken(lox::TokenType::SEMICOLON);
-      break;
-    case '*':
-      addToken(lox::TokenType::STAR);
-      break;
-    case '!':
-      addToken(match('=') ? lox::TokenType::BANG_EQUAL : lox::TokenType::BANG);
-      break;
-    case '=':
-      addToken(match('=') ? lox::TokenType::EQUAL_EQUAL
-                          : lox::TokenType::EQUAL);
-      break;
-    case '<':
-      addToken(match('=') ? lox::TokenType::LESS_EQUAL : lox::TokenType::LESS);
-      break;
-    case '>':
-      addToken(match('=') ? lox::TokenType::GREATER_EQUAL
-                          : lox::TokenType::GREATER);
-      break;
-    case '/':
-      if (match('/')) {
-        // A comment goes until the end of the line
-        while (peek() != '\n' && !isAtEnd())
-          advance();
-      } else {
-        addToken(lox::TokenType::SLASH);
-      }
-      break;
-    case ' ':
-    case '\r':
-    case '\t':
-      // Ignore whitespace
-      break;
-    case '\n':
-      line++;
-      break;
-    case '"':
-      string();
-      break;
-    default:
-      if (std::isdigit(c)) {
-        number();
-      } else if (std::isalpha(c)) {
-        identifier();
-      } else {
-        report.addError(ReportError(line, "Unexpected character."));
-      }
+      case '(':
+        addToken(lox::TokenType::LEFT_PAREN);
+        break;
+      case ')':
+        addToken(lox::TokenType::RIGHT_PAREN);
+        break;
+      case '{':
+        addToken(lox::TokenType::LEFT_BRACE);
+        break;
+      case '}':
+        addToken(lox::TokenType::RIGHT_BRACE);
+        break;
+      case ',':
+        addToken(lox::TokenType::COMMA);
+        break;
+      case '.':
+        addToken(lox::TokenType::DOT);
+        break;
+      case '-':
+        addToken(lox::TokenType::MINUS);
+        break;
+      case '+':
+        addToken(lox::TokenType::PLUS);
+        break;
+      case ';':
+        addToken(lox::TokenType::SEMICOLON);
+        break;
+      case '*':
+        addToken(lox::TokenType::STAR);
+        break;
+      case '!':
+        addToken(match('=') ? lox::TokenType::BANG_EQUAL
+                            : lox::TokenType::BANG);
+        break;
+      case '=':
+        addToken(match('=') ? lox::TokenType::EQUAL_EQUAL
+                            : lox::TokenType::EQUAL);
+        break;
+      case '<':
+        addToken(match('=') ? lox::TokenType::LESS_EQUAL
+                            : lox::TokenType::LESS);
+        break;
+      case '>':
+        addToken(match('=') ? lox::TokenType::GREATER_EQUAL
+                            : lox::TokenType::GREATER);
+        break;
+      case '/':
+        if (match('/')) {
+          // A comment goes until the end of the line
+          while (peek() != '\n' && !isAtEnd())
+            advance();
+        } else {
+          addToken(lox::TokenType::SLASH);
+        }
+        break;
+      case ' ':
+      case '\r':
+      case '\t':
+        // Ignore whitespace
+        break;
+      case '\n':
+        line++;
+        break;
+      case '"':
+        string();
+        break;
+      default:
+        if (std::isdigit(c)) {
+          number();
+        } else if (std::isalpha(c)) {
+          identifier();
+        } else {
+          report.addError(ReportError(line, "Unexpected character."));
+        }
 
-      break;
+        break;
     }
   }
 
