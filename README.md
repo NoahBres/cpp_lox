@@ -7,3 +7,7 @@ Clang version: 16.0.4
 
 - Add C++20 modules
 - Remove exceptions
+
+## Useful VSCode extension:
+
+- https://marketplace.visualstudio.com/items?itemName=maptz.regionfolder
