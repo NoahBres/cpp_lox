@@ -10,6 +10,30 @@
       "command": "make",
       "group": {
         "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "run",
+      "options": {
+        "cwd": "${workspaceFolder}/build"
+      },
+      "type": "shell",
+      "command": "./cpp_lox",
+      "group": {
+        "kind": "none",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "build & run",
+      "options": {
+        "cwd": "${workspaceFolder}/build"
+      },
+      "type": "shell",
+      "command": "make; ./cpp_lox",
+      "group": {
+        "kind": "none",
         "isDefault": true
       }
     }
