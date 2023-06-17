@@ -44,12 +44,13 @@ public:
 
     /* #region Interpreter */
     std::cout << "Interpreter:\n";
-    Interpreter().interpret(*expression);
+    auto interpreter = Interpreter{};
+    auto interpreterReport = interpreter.interpret(*expression);
     /* #endregion */
   }
 
   static auto runFile(const std::string &filePath) -> void {
-    std::ifstream input{filePath};
+    auto input = std::ifstream{filePath};
     if (!input)
       std::cerr << "Could not open file: " << filePath << '\n';
 
@@ -66,7 +67,7 @@ public:
   }
 
   static auto runPrompt() -> void {
-    std::string line;
+    auto line = std::string{};
 
     while (true) {
       std::cout << "> ";
