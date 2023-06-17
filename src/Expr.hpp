@@ -32,18 +32,18 @@ struct Expr {
 
 class Visitor {
 public:
-  virtual std::any visitAssignExpr(const Assign &) = 0;
-  virtual std::any visitBinaryExpr(const Binary &) = 0;
-  virtual std::any visitCallExpr(const Call &) = 0;
-  virtual std::any visitGetExpr(const Get &) = 0;
-  virtual std::any visitGroupingExpr(const Grouping &) = 0;
-  virtual std::any visitLiteralExpr(const Literal &) = 0;
-  virtual std::any visitLogicalExpr(const Logical &) = 0;
-  virtual std::any visitSetExpr(const Set &) = 0;
-  virtual std::any visitSuperExpr(const Super &) = 0;
-  virtual std::any visitThisExpr(const This &) = 0;
-  virtual std::any visitUnaryExpr(const Unary &) = 0;
-  virtual std::any visitVariableExpr(const Variable &) = 0;
+  virtual std::any visitAssignExpr(const Assign &) { return std::any(); };
+  virtual std::any visitBinaryExpr(const Binary &) { return std::any(); };
+  virtual std::any visitCallExpr(const Call &) { return std::any(); };
+  virtual std::any visitGetExpr(const Get &) { return std::any(); };
+  virtual std::any visitGroupingExpr(const Grouping &) { return std::any(); };
+  virtual std::any visitLiteralExpr(const Literal &) { return std::any(); };
+  virtual std::any visitLogicalExpr(const Logical &) { return std::any(); };
+  virtual std::any visitSetExpr(const Set &) { return std::any(); };
+  virtual std::any visitSuperExpr(const Super &) { return std::any(); };
+  virtual std::any visitThisExpr(const This &) { return std::any(); };
+  virtual std::any visitUnaryExpr(const Unary &) { return std::any(); };
+  virtual std::any visitVariableExpr(const Variable &) { return std::any(); };
 };
 
 struct Assign : public Expr {

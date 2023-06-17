@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AstPrinter.hpp"
+#include "Interpreter.hpp"
 #include "Parser.hpp"
 #include "Scanner.hpp"
 #include <fstream>
@@ -10,42 +11,55 @@
 namespace lox {
 
 class Lox {
-  bool had_error = false;
-
 public:
-  auto run(const std::string &source) -> void {
+  static auto run(const std::string &source) -> void {
+    /* #region Scanning + Print tokens */
     std::cout << "Scanning" << '\n';
-    auto scanner = lox::Scanner{source};
-    auto tokens = scanner.scanTokens();
+    auto scanner = lox::Scanner(source);
+    auto [tokens, scannerReport] = scanner.scanTokens();
 
     std::cout << "Tokens:" << std::endl;
-    for (auto token : tokens) {
+    for (auto token : tokens)
       std::cout << token.toString() << std::endl;
-    }
-    std::cout << "" << std::endl;
 
+    std::cout << "" << std::endl;
+    /* #endregion */
+
+    /* #region Parsing */
     std::cout << "Parsing" << '\n';
     auto parser = lox::Parser{tokens};
-    auto expression = parser.parse();
+    auto [expression, parsingReport] = parser.parse();
 
-    if (had_error || !expression)
+    if (parsingReport.status == ParserStatus::HAS_ERRORS ||
+        !expression.has_value()) {
+      parsingReport.printErrors();
       return;
+    }
+    /* #endregion */
 
-    std::cout << lox::AstPrinter{}.print(*expression) << '\n';
+    std::cout << lox::AstPrinter().print(*expression) << '\n';
+
+    Interpreter().interpret(*expression);
   }
 
-  auto runFile(const std::string &filePath) -> void {
+  static auto runFile(const std::string &filePath) -> void {
     std::ifstream input{filePath};
-    if (!input) {
+    if (!input)
       std::cerr << "Could not open file: " << filePath << '\n';
-    }
 
     run(std::string{std::istreambuf_iterator<char>{input}, {}});
-    if (had_error)
-      exit(65);
+
+    // TODO
+    // parser error
+    // if (hadError)
+    // exit(65);
+
+    // interpreter error
+    // if (hadRuntimeError)
+    // exit(70);
   }
 
-  auto runPrompt() -> void {
+  static auto runPrompt() -> void {
     std::string line;
 
     while (true) {
@@ -54,7 +68,7 @@ public:
         break;
 
       run(line);
-      had_error = false;
+      // hadError = false;
     }
   }
 };

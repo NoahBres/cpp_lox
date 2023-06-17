@@ -1,16 +1,22 @@
 #pragma once
 
 #include "Lox.hpp"
+#include "Parser.hpp"
 #include "Report.hpp"
 #include "Token.hpp"
 #include <unordered_map>
+#include <utility>
 
 namespace lox {
+
+enum class ScannerStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
 
 class Scanner {
 private:
   std::string source;
-  std::vector<lox::Token> tokens;
+  std::vector<Token> tokens;
+
+  Report<ScannerStatus> report{ScannerStatus::UNPROCESSED};
 
   int start = 0;
   int current = 0;
@@ -71,7 +77,7 @@ private:
     }
 
     if (isAtEnd()) {
-      lox::error(line, "Unterminated string.");
+      report.addError(ReportError(line, "Unterminated string."));
       return;
     }
 
@@ -185,7 +191,7 @@ private:
       } else if (std::isalpha(c)) {
         identifier();
       } else {
-        lox::error(line, "Unexpected character.");
+        report.addError(ReportError(line, "Unexpected character."));
       }
 
       break;
@@ -193,9 +199,9 @@ private:
   }
 
 public:
-  Scanner(std::string source) : source{std::move(source)} {}
+  Scanner(std::string source) : source{source} {}
 
-  auto scanTokens() -> std::vector<lox::Token> {
+  auto scanTokens() {
     while (!isAtEnd()) {
       // Beginning of next lexeme
       start = current;
@@ -205,7 +211,9 @@ public:
     // Append EOF token
     tokens.emplace_back(lox::TokenType::END_OF_FILE, "", std::any{}, line);
 
-    return tokens;
+    report.status = report.errors.size() == 0 ? ScannerStatus::SUCCESS
+                                              : ScannerStatus::HAS_ERRORS;
+    return std::make_pair(tokens, report);
   }
 };
 

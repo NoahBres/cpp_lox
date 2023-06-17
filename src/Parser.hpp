@@ -7,26 +7,21 @@
 #include <exception>
 #include <memory>
 #include <optional>
+#include <tuple>
 #include <vector>
 
 namespace lox {
+
+enum class ParserStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
 
 class Parser {
   std::vector<Token> tokens;
   int current = 0;
 
-  class ParserError : public std::exception {
-  public:
-    ParserError(char const *message) : message{message} {}
-    auto what() const noexcept -> const char * override { return message; }
-
-  private:
-    char const *message;
-  };
+  Report<ParserStatus> report;
 
   auto generateParserError(Token token, std::string message) {
-    error(token, message);
-    return ParserError{message.c_str()};
+    return ReportError(token, message);
   }
 
   auto previous() -> Token { return tokens.at(current - 1); }
@@ -176,13 +171,21 @@ class Parser {
   }
 
 public:
-  Parser(std::vector<Token> tokens) : tokens{tokens} {}
+  Parser(std::vector<Token> tokens)
+      : tokens{tokens}, report{Report(ParserStatus::UNPROCESSED)} {}
 
-  auto parse() -> std::optional<std::shared_ptr<Expr>> {
+  auto parse()
+      -> std::pair<std::optional<std::shared_ptr<Expr>>, Report<ParserStatus>> {
     try {
-      return std::optional{expression()};
-    } catch (ParserError &e) {
-      return std::nullopt;
+      auto expr = expression();
+      report.status = ParserStatus::SUCCESS;
+
+      return std::make_pair(std::make_optional(expr), report);
+    } catch (ReportError &err) {
+      report.status = ParserStatus::HAS_ERRORS;
+      report.addError(err);
+
+      return std::make_pair(std::nullopt, report);
     }
   }
 };

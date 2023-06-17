@@ -5,18 +5,15 @@
 #include <iostream>
 
 auto main(int argc, char **argv) -> int {
-  lox::Lox lox;
-  lox.run("1 + 3");
+  lox::Lox::run("1 + 3");
 
   // if (argc > 2) {
   //   std::cout << "Usage: cpp_lox [script]\n";
   //   return 64;
   // } else if (argc == 2) {
-  //   lox::Lox lox;
-  //   lox.runFile(argv[1]);
+  //   lox::Lox::runFile(argv[1]);
   // } else {
-  //   lox::Lox lox;
-  //   lox.runPrompt();
+  //   lox::Lox::runPrompt();
   // }
 
   return 0;
