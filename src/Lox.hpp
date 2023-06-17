@@ -37,9 +37,15 @@ public:
     }
     /* #endregion */
 
-    std::cout << lox::AstPrinter().print(*expression) << '\n';
+    /* #region AST Printer */
+    std::cout << "AST Printer:\n";
+    std::cout << lox::AstPrinter().print(*expression) << "\n\n";
+    /* #endregion */
 
+    /* #region Interpreter */
+    std::cout << "Interpreter:\n";
     Interpreter().interpret(*expression);
+    /* #endregion */
   }
 
   static auto runFile(const std::string &filePath) -> void {
