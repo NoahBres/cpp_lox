@@ -1,19 +1,23 @@
 #pragma once
 
+#include <any>
 #include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "Expr.hpp"
 #include "Parser.hpp"
 #include "Report.hpp"
+#include "Stmt.hpp"
 #include "Token.hpp"
 
 namespace lox {
   enum class InterpreterStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
 
-  class Interpreter : public lox::Visitor {
+  class Interpreter : public expr::Visitor, public stmt::Visitor {
   private:
     auto inline evaluate(std::shared_ptr<Expr> expr) -> std::any {
       return expr->accept(*this);
@@ -48,6 +52,8 @@ namespace lox {
       return false;
     }
 
+    auto inline execute(std::shared_ptr<Stmt> stmt) { stmt->accept(*this); }
+
     auto validateOpIsNumberThrows(Token op, std::any operand) {
       if (operand.type() == typeid(double))
         return;
@@ -72,19 +78,26 @@ namespace lox {
         return text;
       }
 
+      // TODO: Replace with appropriate cast
+      if (obj.type() == typeid(bool))
+        return std::any_cast<bool>(obj) ? std::string("true")
+                                        : std::string("false");
+
+      // TODO: Fix this casting
       return std::any_cast<std::string>(obj);
     }
 
   public:
-    auto visitLiteralExpr(Literal const &expr) -> std::any override {
+    /* #region Expr */
+    auto visitLiteralExpr(expr::Literal const &expr) -> std::any override {
       return expr.value;
     }
 
-    auto visitGroupingExpr(Grouping const &expr) -> std::any override {
+    auto visitGroupingExpr(expr::Grouping const &expr) -> std::any override {
       return evaluate(expr.expression);
     }
 
-    auto visitUnaryExpr(Unary const &expr) -> std::any override {
+    auto visitUnaryExpr(expr::Unary const &expr) -> std::any override {
       auto right = evaluate(expr.right);
 
       switch (expr.op.type) {
@@ -97,7 +110,7 @@ namespace lox {
       }
     }
 
-    auto visitBinaryExpr(Binary const &expr) -> std::any override {
+    auto visitBinaryExpr(expr::Binary const &expr) -> std::any override {
       auto left = evaluate(expr.left);
       auto right = evaluate(expr.right);
 
@@ -150,13 +163,25 @@ namespace lox {
 
       throw std::runtime_error("Invalid binary operator");
     }
+    /* #endregion */
 
-    auto interpret(std::shared_ptr<Expr> expression) {
+    /* #region Stmt */
+    auto visitExpressionStmt(stmt::Expression const &stmt) -> void override {
+      evaluate(stmt.expression);
+    }
+
+    auto visitPrintStmt(stmt::Print const &stmt) -> void override {
+      auto value = evaluate(stmt.expression);
+      std::cout << stringify(value);
+    }
+    /* #endregion */
+
+    auto interpret(std::vector<std::shared_ptr<Stmt>> statements) {
       auto report = Report<InterpreterStatus>{InterpreterStatus::UNPROCESSED};
 
       try {
-        auto value = evaluate(expression);
-        std::cout << stringify(value) << "\n";
+        for (auto &statement : statements)
+          execute(statement);
 
         report.status = InterpreterStatus::SUCCESS;
       } catch (ReportError &err) {

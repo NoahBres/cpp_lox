@@ -7,14 +7,14 @@
 #include "Expr.hpp"
 
 namespace lox {
-  class AstPrinter : public lox::Visitor {
+  class AstPrinter : public expr::Visitor {
   public:
-    auto print(std::shared_ptr<Expr> expr) -> std::string {
+    auto print(std::shared_ptr<expr::Expr> expr) -> std::string {
       return std::any_cast<std::string>(expr->accept(*this));
     }
 
     auto parenthesize(std::string name,
-                      const std::vector<std::shared_ptr<Expr>> &exprs) {
+                      const std::vector<std::shared_ptr<expr::Expr>> &exprs) {
       std::string result = "(" + name;
 
       for (auto expr : exprs) {
@@ -27,53 +27,53 @@ namespace lox {
       return result;
     }
 
-    auto visitBinaryExpr(Binary const &expr) -> std::any override {
+    auto visitBinaryExpr(expr::Binary const &expr) -> std::any override {
       return parenthesize(expr.op.lexeme, {expr.left, expr.right});
     }
 
-    auto visitGroupingExpr(Grouping const &expr) -> std::any override {
+    auto visitGroupingExpr(expr::Grouping const &expr) -> std::any override {
       return parenthesize("group", {expr.expression});
     }
 
-    auto visitLiteralExpr(Literal const &expr) -> std::any override {
+    auto visitLiteralExpr(expr::Literal const &expr) -> std::any override {
       return expr.value.has_value()
                  ? std::to_string(std::any_cast<double>(expr.value))
                  : "nil";
     }
 
-    auto visitUnaryExpr(Unary const &expr) -> std::any override {
+    auto visitUnaryExpr(expr::Unary const &expr) -> std::any override {
       return parenthesize(expr.op.lexeme, {expr.right});
     }
 
-    auto visitAssignExpr(Assign const &expr) -> std::any override {
+    auto visitAssignExpr(expr::Assign const &expr) -> std::any override {
       return parenthesize(expr.name.lexeme, {expr.value});
     }
 
-    auto visitVariableExpr(Variable const &expr) -> std::any override {
+    auto visitVariableExpr(expr::Variable const &expr) -> std::any override {
       return expr.name.lexeme;
     }
 
-    auto visitLogicalExpr(Logical const &expr) -> std::any override {
+    auto visitLogicalExpr(expr::Logical const &expr) -> std::any override {
       return parenthesize(expr.op.lexeme, {expr.left, expr.right});
     }
 
-    auto visitCallExpr(Call const &expr) -> std::any override {
+    auto visitCallExpr(expr::Call const &expr) -> std::any override {
       return parenthesize(expr.paren.lexeme, {expr.callee});
     }
 
-    auto visitGetExpr(Get const &expr) -> std::any override {
+    auto visitGetExpr(expr::Get const &expr) -> std::any override {
       return parenthesize(expr.name.lexeme, {expr.object});
     }
 
-    auto visitSetExpr(Set const &expr) -> std::any override {
+    auto visitSetExpr(expr::Set const &expr) -> std::any override {
       return parenthesize(expr.name.lexeme, {expr.object, expr.value});
     }
 
-    auto visitThisExpr(This const &expr) -> std::any override {
+    auto visitThisExpr(expr::This const &expr) -> std::any override {
       return expr.keyword.lexeme;
     }
 
-    auto visitSuperExpr(Super const &expr) -> std::any override {
+    auto visitSuperExpr(expr::Super const &expr) -> std::any override {
       return expr.keyword.lexeme;
     }
   };

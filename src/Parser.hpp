@@ -5,13 +5,17 @@
 #include <memory>
 #include <optional>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "Expr.hpp"
 #include "Report.hpp"
+#include "Stmt.hpp"
 #include "Token.hpp"
 
 namespace lox {
+  using expr::Expr, stmt::Stmt;
+
   enum class ParserStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
 
   class Parser {
@@ -24,24 +28,22 @@ namespace lox {
       return ReportError(token, message);
     }
 
-    auto previous() -> Token { return tokens.at(current - 1); }
+    auto previous() { return tokens.at(current - 1); }
 
-    auto peek() -> Token { return tokens.at(current); }
+    auto peek() { return tokens.at(current); }
 
-    auto isAtEnd() -> bool { return peek().type == TokenType::END_OF_FILE; }
+    auto isAtEnd() { return peek().type == TokenType::END_OF_FILE; }
 
-    auto advance() -> Token {
-      if (!isAtEnd()) {
+    auto advance() {
+      if (!isAtEnd())
         current++;
-      }
 
       return previous();
     }
 
-    auto check(TokenType type) -> bool {
-      if (isAtEnd()) {
+    auto check(TokenType type) {
+      if (isAtEnd())
         return false;
-      }
 
       return peek().type == type;
     }
@@ -57,6 +59,7 @@ namespace lox {
       return false;
     }
 
+    /* #region Expr */
     auto expression() -> std::shared_ptr<Expr> { return equality(); }
 
     auto equality() -> std::shared_ptr<Expr> {
@@ -65,7 +68,7 @@ namespace lox {
       while (match({TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL})) {
         auto op = previous();
         auto right = comparison();
-        expr = std::make_shared<Binary>(expr, op, right);
+        expr = std::make_shared<expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -78,7 +81,7 @@ namespace lox {
                     TokenType::LESS, TokenType::LESS_EQUAL})) {
         auto op = previous();
         auto right = term();
-        expr = std::make_shared<Binary>(expr, op, right);
+        expr = std::make_shared<expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -90,7 +93,7 @@ namespace lox {
       while (match({TokenType::MINUS, TokenType::PLUS})) {
         auto op = previous();
         auto right = factor();
-        expr = std::make_shared<Binary>(expr, op, right);
+        expr = std::make_shared<expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -102,7 +105,7 @@ namespace lox {
       while (match({TokenType::SLASH, TokenType::STAR})) {
         auto op = previous();
         auto right = unary();
-        expr = std::make_shared<Binary>(expr, op, right);
+        expr = std::make_shared<expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -112,7 +115,7 @@ namespace lox {
       if (match({TokenType::BANG, TokenType::MINUS})) {
         auto op = previous();
         auto right = unary();
-        return std::make_shared<Unary>(op, right);
+        return std::make_shared<expr::Unary>(op, right);
       }
 
       return primary();
@@ -120,23 +123,45 @@ namespace lox {
 
     auto primary() -> std::shared_ptr<Expr> {
       if (match({TokenType::FALSE}))
-        return std::make_shared<Literal>(false);
+        return std::make_shared<expr::Literal>(false);
       if (match({TokenType::TRUE}))
-        return std::make_shared<Literal>(true);
+        return std::make_shared<expr::Literal>(true);
       if (match({TokenType::NIL}))
-        return std::make_shared<Literal>(nullptr);
+        return std::make_shared<expr::Literal>(nullptr);
 
       if (match({TokenType::NUMBER, TokenType::STRING}))
-        return std::make_shared<Literal>(previous().literal);
+        return std::make_shared<expr::Literal>(previous().literal);
 
       if (match({TokenType::LEFT_PAREN})) {
         auto expr = expression();
         consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-        return std::make_shared<Grouping>(expr);
+        return std::make_shared<expr::Grouping>(expr);
       }
 
       throw generateParserError(peek(), "Expect expression.");
     }
+    /* #endregion */
+
+    /* #region Stmt */
+    auto statement() -> std::shared_ptr<Stmt> {
+      return match({TokenType::PRINT}) ? printStatement()
+                                       : expressionStatement();
+    }
+
+    auto printStatement() -> std::shared_ptr<Stmt> {
+      auto value = expression();
+      consume(TokenType::SEMICOLON, "Expect ';' after value.");
+
+      return std::make_shared<stmt::Print>(value);
+    }
+
+    auto expressionStatement() -> std::shared_ptr<Stmt> {
+      auto expr = expression();
+      consume(TokenType::SEMICOLON, "Expect ';' after expression.");
+
+      return std::make_shared<stmt::Expression>(expr);
+    }
+    /* #endregion */
 
     auto consume(TokenType type, std::string message) -> Token {
       if (check(type))
@@ -174,19 +199,29 @@ namespace lox {
     Parser(std::vector<Token> tokens)
         : tokens{tokens}, report{Report(ParserStatus::UNPROCESSED)} {}
 
-    auto parse() -> std::pair<std::optional<std::shared_ptr<Expr>>,
-                              Report<ParserStatus>> {
-      try {
-        auto expr = expression();
-        report.status = ParserStatus::SUCCESS;
+    // auto parse() -> std::pair<std::optional<std::shared_ptr<Expr>>,
+    //                           Report<ParserStatus>> {
+    auto parse() {
+      auto statements = std::vector<std::shared_ptr<Stmt>>();
 
-        return std::make_pair(std::make_optional(expr), report);
-      } catch (ReportError &err) {
-        report.status = ParserStatus::HAS_ERRORS;
-        report.addError(err);
-
-        return std::make_pair(std::nullopt, report);
+      while (!isAtEnd()) {
+        statements.push_back(statement());
       }
+
+      report.status = ParserStatus::SUCCESS;
+      return std::make_pair(statements, report);
+
+      // try {
+      //   auto expr = expression();
+      //   report.status = ParserStatus::SUCCESS;
+
+      //   return std::make_pair(std::make_optional(expr), report);
+      // } catch (ReportError &err) {
+      //   report.status = ParserStatus::HAS_ERRORS;
+      //   report.addError(err);
+
+      //   return std::make_pair(std::nullopt, report);
+      // }
     }
   };
 } // namespace lox

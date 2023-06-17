@@ -28,24 +28,23 @@ namespace lox {
       /* #region Parsing */
       std::cout << "Parsing" << '\n';
       auto parser = lox::Parser{tokens};
-      auto [expression, parsingReport] = parser.parse();
+      auto [statements, parsingReport] = parser.parse();
 
-      if (parsingReport.status == ParserStatus::HAS_ERRORS ||
-          !expression.has_value()) {
+      if (parsingReport.status == ParserStatus::HAS_ERRORS) {
         parsingReport.printErrors();
         return;
       }
       /* #endregion */
 
       /* #region AST Printer */
-      std::cout << "AST Printer:\n";
-      std::cout << lox::AstPrinter().print(*expression) << "\n\n";
+      // std::cout << "AST Printer:\n";
+      // std::cout << lox::AstPrinter().print(*expression) << "\n\n";
       /* #endregion */
 
       /* #region Interpreter */
       std::cout << "Interpreter:\n";
       auto interpreter = Interpreter{};
-      auto interpreterReport = interpreter.interpret(*expression);
+      auto interpreterReport = interpreter.interpret(statements);
       /* #endregion */
     }
 
