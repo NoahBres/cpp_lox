@@ -35,7 +35,8 @@
       "group": {
         "kind": "none",
         "isDefault": true
-      }
+      },
+      "problemMatcher": []
     }
   ]
 }
