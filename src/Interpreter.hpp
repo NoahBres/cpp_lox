@@ -4,10 +4,12 @@
 #include <initializer_list>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "Environment.hpp"
 #include "Expr.hpp"
 #include "Parser.hpp"
 #include "Report.hpp"
@@ -17,8 +19,10 @@
 namespace lox {
   enum class InterpreterStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
 
-  class Interpreter : public expr::Visitor, public stmt::Visitor {
+  class Interpreter : private expr::Visitor, private stmt::Visitor {
   private:
+    Environment environment{};
+
     auto inline evaluate(std::shared_ptr<Expr> expr) -> std::any {
       return expr->accept(*this);
     }
@@ -78,10 +82,15 @@ namespace lox {
         return text;
       }
 
-      // TODO: Replace with appropriate cast
       if (obj.type() == typeid(bool))
         return std::any_cast<bool>(obj) ? std::string("true")
                                         : std::string("false");
+
+      if (obj.type() == typeid(std::optional<std::any>)) {
+        auto value = std::any_cast<std::optional<std::any>>(obj);
+        return value->has_value() ? stringify(value.value())
+                                  : std::string("nil");
+      }
 
       // TODO: Fix this casting
       return std::any_cast<std::string>(obj);
@@ -108,6 +117,10 @@ namespace lox {
         default:
           throw std::runtime_error{"Invalid unary operator"};
       }
+    }
+
+    auto visitVariableExpr(expr::Variable const &expr) -> std::any override {
+      return environment.get(expr.name);
     }
 
     auto visitBinaryExpr(expr::Binary const &expr) -> std::any override {
@@ -163,6 +176,12 @@ namespace lox {
 
       throw std::runtime_error("Invalid binary operator");
     }
+
+    auto visitAssignExpr(expr::Assign const &expr) -> std::any override {
+      auto value = evaluate(expr.value);
+      environment.assign(expr.name, value);
+      return value;
+    }
     /* #endregion */
 
     /* #region Stmt */
@@ -173,6 +192,14 @@ namespace lox {
     auto visitPrintStmt(stmt::Print const &stmt) -> void override {
       auto value = evaluate(stmt.expression);
       std::cout << stringify(value);
+    }
+
+    auto visitVarStmt(stmt::Var const &stmt) -> void override {
+      auto value = std::make_optional<std::any>();
+      if (stmt.initializer.has_value())
+        value = evaluate(*stmt.initializer);
+
+      environment.define(stmt.name.lexeme, value);
     }
     /* #endregion */
 

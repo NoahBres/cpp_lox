@@ -1,7 +1,13 @@
 #pragma once
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <memory>
+#include <numeric>
+#include <optional>
+#include <ranges>
 #include <string>
 
 #include "AstPrinter.hpp"
@@ -19,8 +25,9 @@ namespace lox {
       auto [tokens, scannerReport] = scanner.scanTokens();
 
       std::cout << "Tokens:" << std::endl;
-      for (auto token : tokens)
+      for (const auto &token : tokens) {
         std::cout << token.toString() << std::endl;
+      }
 
       std::cout << "" << std::endl;
       /* #endregion */
@@ -44,14 +51,29 @@ namespace lox {
       /* #region Interpreter */
       std::cout << "Interpreter:\n";
       auto interpreter = Interpreter{};
-      auto interpreterReport = interpreter.interpret(statements);
+
+      // Filter and extract value from optional vector
+      using namespace std::ranges::views;
+
+      std::vector<decltype(statements)::value_type::value_type> filtered;
+      filtered.reserve(statements.size());
+
+      for (auto const &stmt :
+           statements | filter([](auto const &stmt) {
+             return stmt.has_value();
+           }) | transform([](auto const &stmt) { return stmt.value(); })) {
+        filtered.push_back(stmt);
+      }
+
+      interpreter.interpret(filtered);
       /* #endregion */
     }
 
     static auto runFile(const std::string &filePath) -> void {
       auto input = std::ifstream{filePath};
-      if (!input)
+      if (!input) {
         std::cerr << "Could not open file: " << filePath << '\n';
+      }
 
       run(std::string{std::istreambuf_iterator<char>{input}, {}});
 
@@ -70,8 +92,9 @@ namespace lox {
 
       while (true) {
         std::cout << "> ";
-        if (!std::getline(std::cin, line))
+        if (!std::getline(std::cin, line)) {
           break;
+        }
 
         run(line);
         // hadError = false;

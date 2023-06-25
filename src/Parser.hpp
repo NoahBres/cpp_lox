@@ -48,6 +48,15 @@ namespace lox {
       return peek().type == type;
     }
 
+    auto match(TokenType type) {
+      if (check(type)) {
+        advance();
+        return true;
+      }
+
+      return false;
+    }
+
     auto match(std::initializer_list<TokenType> types) {
       for (TokenType type : types) {
         if (check(type)) {
@@ -59,8 +68,58 @@ namespace lox {
       return false;
     }
 
+    auto consume(TokenType type, std::string message) -> Token {
+      if (check(type))
+        return advance();
+
+      throw generateParserError(peek(), message);
+    }
+
+    auto synchronize() -> void {
+      advance();
+
+      while (!isAtEnd()) {
+        if (previous().type == TokenType::SEMICOLON)
+          return;
+
+        switch (peek().type) {
+          case TokenType::CLASS:
+          case TokenType::FUN:
+          case TokenType::VAR:
+          case TokenType::FOR:
+          case TokenType::IF:
+          case TokenType::WHILE:
+          case TokenType::PRINT:
+          case TokenType::RETURN:
+            return;
+          default:
+            break;
+        }
+
+        advance();
+      }
+    }
+
     /* #region Expr */
-    auto expression() -> std::shared_ptr<Expr> { return equality(); }
+    auto expression() -> std::shared_ptr<Expr> { return assignment(); }
+
+    auto assignment() -> std::shared_ptr<Expr> {
+      auto expr = equality();
+      if (match(TokenType::EQUAL)) {
+        auto equals = previous();
+        auto value = assignment();
+
+        if (auto cast = dynamic_cast<expr::Variable *>(expr.get());
+            cast != nullptr) {
+          auto name = cast->name;
+          return std::make_shared<expr::Assign>(name, value);
+        }
+
+        report.addError(ReportError{equals, "Invalid assignment target."});
+      }
+
+      return expr;
+    }
 
     auto equality() -> std::shared_ptr<Expr> {
       auto expr = comparison();
@@ -132,6 +191,9 @@ namespace lox {
       if (match({TokenType::NUMBER, TokenType::STRING}))
         return std::make_shared<expr::Literal>(previous().literal);
 
+      if (match({TokenType::IDENTIFIER}))
+        return std::make_shared<expr::Variable>(previous());
+
       if (match({TokenType::LEFT_PAREN})) {
         auto expr = expression();
         consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
@@ -163,37 +225,29 @@ namespace lox {
     }
     /* #endregion */
 
-    auto consume(TokenType type, std::string message) -> Token {
-      if (check(type))
-        return advance();
+    /* #region Declaration */
+    auto varDeclaration() -> std::shared_ptr<Stmt> {
+      auto name = consume(TokenType::IDENTIFIER, "Expect variable name.");
 
-      throw generateParserError(peek(), message);
+      auto initializer = match({TokenType::EQUAL})
+                             ? std::make_optional(expression())
+                             : std::nullopt;
+      consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+      return std::make_shared<stmt::Var>(name, initializer);
     }
 
-    auto synchronize() -> void {
-      advance();
+    auto declaration() -> std::optional<std::shared_ptr<Stmt>> {
+      try {
+        if (match({TokenType::VAR}))
+          return std::make_optional(varDeclaration());
 
-      while (!isAtEnd()) {
-        if (previous().type == TokenType::SEMICOLON)
-          return;
-
-        switch (peek().type) {
-          case TokenType::CLASS:
-          case TokenType::FUN:
-          case TokenType::VAR:
-          case TokenType::FOR:
-          case TokenType::IF:
-          case TokenType::WHILE:
-          case TokenType::PRINT:
-          case TokenType::RETURN:
-            return;
-          default:
-            break;
-        }
-
-        advance();
+        return std::make_optional(statement());
+      } catch (ReportError error) {
+        synchronize();
+        return std::nullopt;
       }
     }
+    /* #endregion */
 
   public:
     Parser(std::vector<Token> tokens)
@@ -202,10 +256,10 @@ namespace lox {
     // auto parse() -> std::pair<std::optional<std::shared_ptr<Expr>>,
     //                           Report<ParserStatus>> {
     auto parse() {
-      auto statements = std::vector<std::shared_ptr<Stmt>>();
+      auto statements = std::vector<std::optional<std::shared_ptr<Stmt>>>();
 
       while (!isAtEnd()) {
-        statements.push_back(statement());
+        statements.push_back(declaration());
       }
 
       report.status = ParserStatus::SUCCESS;

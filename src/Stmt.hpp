@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Expr.hpp"
+#include "Token.hpp"
 #include <any>
 #include <memory>
 
@@ -11,6 +12,7 @@ namespace lox {
     /* #region Forward declarations */
     struct Print;
     struct Expression;
+    struct Var;
 
     struct Visitor;
     /* #endregion */
@@ -24,6 +26,7 @@ namespace lox {
     public:
       virtual auto visitPrintStmt(const Print &stmt) -> void{};
       virtual auto visitExpressionStmt(const Expression &stmt) -> void{};
+      virtual auto visitVarStmt(const Var &stmt) -> void{};
     };
 
     struct Print : public Stmt {
@@ -43,6 +46,18 @@ namespace lox {
 
       auto accept(Visitor &visitor) -> void override {
         return visitor.visitExpressionStmt(*this);
+      }
+    };
+
+    struct Var : public Stmt {
+      Token name;
+      std::optional<std::shared_ptr<Expr>> initializer;
+
+      Var(Token name, std::optional<std::shared_ptr<Expr>> initializer)
+          : name{name}, initializer{std::move(initializer)} {};
+
+      auto accept(Visitor &visitor) -> void override {
+        return visitor.visitVarStmt(*this);
       }
     };
   } // namespace stmt

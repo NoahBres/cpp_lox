@@ -5,7 +5,8 @@
 #include <iostream>
 
 auto main(int argc, char **argv) -> int {
-  lox::Lox::run("1 + 3");
+  lox::Lox::run(R"(print 1 + 3 * (4 + 8); print "\nyuhh\n"; print true;)");
+  lox::Lox::run(R"(var a = 1; print a;)");
 
   // if (argc > 2) {
   //   std::cout << "Usage: cpp_lox [script]\n";
