@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Environment.hpp"
@@ -23,68 +24,85 @@ namespace lox {
   private:
     Environment environment{};
 
-    auto inline evaluate(std::shared_ptr<Expr> expr) -> std::any {
+    auto inline evaluate(std::unique_ptr<Expr> const &expr) -> std::any {
       return expr->accept(*this);
     }
 
-    auto inline isTruthy(std::any const &object) -> bool {
-      if (!object.has_value())
+    static auto inline isTruthy(std::any const &object) -> bool {
+      if (!object.has_value()) {
         return false;
+      }
 
-      if (object.type() == typeid(bool))
+      if (object.type() == typeid(bool)) {
         return std::any_cast<bool>(object);
+      }
 
       return true;
     }
 
-    auto inline isEqual(std::any const &a, std::any const &b) -> bool {
-      if (!a.has_value() && !b.has_value())
+    static auto inline isEqual(std::any const &a, std::any const &b) -> bool {
+      if (!a.has_value() && !b.has_value()) {
         return true;
+      }
 
-      if (!a.has_value())
+      if (!a.has_value()) {
         return false;
+      }
 
-      if (a.type() == typeid(std::string) && b.type() == typeid(std::string))
+      if (a.type() == typeid(std::string) && b.type() == typeid(std::string)) {
         return std::any_cast<std::string>(a) == std::any_cast<std::string>(b);
+      }
 
-      if (a.type() == typeid(double) && b.type() == typeid(double))
+      if (a.type() == typeid(double) && b.type() == typeid(double)) {
         return std::any_cast<double>(a) == std::any_cast<double>(b);
+      }
 
-      if (a.type() == typeid(bool) && b.type() == typeid(bool))
+      if (a.type() == typeid(bool) && b.type() == typeid(bool)) {
         return std::any_cast<bool>(a) == std::any_cast<bool>(b);
+      }
 
       return false;
     }
 
-    auto inline execute(std::shared_ptr<Stmt> stmt) { stmt->accept(*this); }
-
-    auto validateOpIsNumberThrows(Token op, std::any operand) {
-      if (operand.type() == typeid(double))
-        return;
-      throw ReportError(op, "Operand must be a number");
+    auto inline execute(std::unique_ptr<Stmt> const &stmt) {
+      stmt->accept(*this);
     }
 
-    auto validateOpIsNumberThrows(Token op, std::any left, std::any right) {
-      if (left.type() == typeid(double) && right.type() == typeid(double))
+    static auto validateOpIsNumberThrows(Token op, const std::any &operand) {
+      if (operand.type() == typeid(double)) {
         return;
-      throw ReportError(op, "Operands must be numbers.");
+      }
+
+      throw ReportError(std::move(op), "Operand must be a number");
+    }
+
+    static auto validateOpIsNumberThrows(Token op, const std::any &left,
+                                         const std::any &right) {
+      if (left.type() == typeid(double) && right.type() == typeid(double)) {
+        return;
+      }
+
+      throw ReportError(std::move(op), "Operands must be numbers.");
     }
 
     auto stringify(std::any obj) {
-      if (!obj.has_value())
+      if (!obj.has_value()) {
         return std::string("nil");
+      }
 
       if (obj.type() == typeid(double)) {
         auto text = std::to_string(std::any_cast<double>(obj));
-        if (text.ends_with(".0"))
+        if (text.ends_with(".0")) {
           text = text.substr(0, text.length() - 2);
+        }
 
         return text;
       }
 
-      if (obj.type() == typeid(bool))
+      if (obj.type() == typeid(bool)) {
         return std::any_cast<bool>(obj) ? std::string("true")
                                         : std::string("false");
+      }
 
       if (obj.type() == typeid(std::optional<std::any>)) {
         auto value = std::any_cast<std::optional<std::any>>(obj);
@@ -203,12 +221,13 @@ namespace lox {
     }
     /* #endregion */
 
-    auto interpret(std::vector<std::shared_ptr<Stmt>> statements) {
+    auto interpret(const std::vector<std::unique_ptr<Stmt>> &statements) {
       auto report = Report<InterpreterStatus>{InterpreterStatus::UNPROCESSED};
 
       try {
-        for (auto &statement : statements)
+        for (auto const &statement : statements) {
           execute(statement);
+        }
 
         report.status = InterpreterStatus::SUCCESS;
       } catch (ReportError &err) {

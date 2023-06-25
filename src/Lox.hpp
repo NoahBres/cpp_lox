@@ -53,16 +53,15 @@ namespace lox {
       auto interpreter = Interpreter{};
 
       // Filter and extract value from optional vector
-      using namespace std::ranges::views;
-
       std::vector<decltype(statements)::value_type::value_type> filtered;
       filtered.reserve(statements.size());
 
-      for (auto const &stmt :
-           statements | filter([](auto const &stmt) {
-             return stmt.has_value();
-           }) | transform([](auto const &stmt) { return stmt.value(); })) {
-        filtered.push_back(stmt);
+      // std::ranges::views unfortunately does not like the optional<unique_ptr>
+      // extraction
+      for (auto &stmt : statements) {
+        if (stmt.has_value()) {
+          filtered.push_back(std::move(stmt.value()));
+        }
       }
 
       interpreter.interpret(filtered);

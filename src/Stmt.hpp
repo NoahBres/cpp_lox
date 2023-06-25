@@ -4,61 +4,60 @@
 #include "Token.hpp"
 #include <any>
 #include <memory>
+#include <utility>
 
-namespace lox {
-  namespace stmt {
-    using expr::Expr;
+namespace lox::stmt {
+  /* #region Forward declarations */
+  struct Print;
+  struct Expression;
+  struct Var;
 
-    /* #region Forward declarations */
-    struct Print;
-    struct Expression;
-    struct Var;
+  struct Visitor;
+  /* #endregion */
 
-    struct Visitor;
-    /* #endregion */
+  struct Stmt {
+    virtual ~Stmt() = default;
+    virtual auto accept(Visitor &visitor) -> void{};
+  };
 
-    struct Stmt {
-      virtual ~Stmt() = default;
-      virtual auto accept(Visitor &visitor) -> void{};
-    };
+  class Visitor {
+  public:
+    virtual auto visitPrintStmt(const Print &stmt) -> void{};
+    virtual auto visitExpressionStmt(const Expression &stmt) -> void{};
+    virtual auto visitVarStmt(const Var &stmt) -> void{};
+  };
 
-    class Visitor {
-    public:
-      virtual auto visitPrintStmt(const Print &stmt) -> void{};
-      virtual auto visitExpressionStmt(const Expression &stmt) -> void{};
-      virtual auto visitVarStmt(const Var &stmt) -> void{};
-    };
+  struct Print : public Stmt {
+    std::unique_ptr<expr::Expr> expression;
 
-    struct Print : public Stmt {
-      std::shared_ptr<Expr> expression;
+    Print(std::unique_ptr<expr::Expr> &expression)
+        : expression{std::move(expression)} {};
 
-      Print(std::shared_ptr<Expr> expression) : expression{expression} {};
+    auto accept(Visitor &visitor) -> void override {
+      return visitor.visitPrintStmt(*this);
+    }
+  };
 
-      auto accept(Visitor &visitor) -> void override {
-        return visitor.visitPrintStmt(*this);
-      }
-    };
+  struct Expression : public Stmt {
+    std::unique_ptr<expr::Expr> expression;
 
-    struct Expression : public Stmt {
-      std::shared_ptr<Expr> expression;
+    Expression(std::unique_ptr<expr::Expr> &expression)
+        : expression{std::move(expression)} {};
 
-      Expression(std::shared_ptr<Expr> expression) : expression{expression} {};
+    auto accept(Visitor &visitor) -> void override {
+      return visitor.visitExpressionStmt(*this);
+    }
+  };
 
-      auto accept(Visitor &visitor) -> void override {
-        return visitor.visitExpressionStmt(*this);
-      }
-    };
+  struct Var : public Stmt {
+    Token name;
+    std::optional<std::unique_ptr<expr::Expr>> initializer;
 
-    struct Var : public Stmt {
-      Token name;
-      std::optional<std::shared_ptr<Expr>> initializer;
+    Var(Token name, std::optional<std::unique_ptr<expr::Expr>> &initializer)
+        : name{std::move(name)}, initializer{std::move(initializer)} {};
 
-      Var(Token name, std::optional<std::shared_ptr<Expr>> initializer)
-          : name{name}, initializer{std::move(initializer)} {};
-
-      auto accept(Visitor &visitor) -> void override {
-        return visitor.visitVarStmt(*this);
-      }
-    };
-  } // namespace stmt
-} // namespace lox
+    auto accept(Visitor &visitor) -> void override {
+      return visitor.visitVarStmt(*this);
+    }
+  };
+} // namespace lox::stmt
