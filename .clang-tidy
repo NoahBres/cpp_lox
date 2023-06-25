@@ -1,0 +1,7 @@
+Checks:
+  modernize-*,
+  portability-*,
+  cppcoreguidlines-*,
+  clang-analyzer-*
+  performance-*,
+  readability-*
