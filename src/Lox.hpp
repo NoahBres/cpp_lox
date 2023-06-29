@@ -20,11 +20,10 @@ namespace lox {
   public:
     static auto run(const std::string &source) -> void {
       /* #region Scanning + Print tokens */
-      std::cout << "Scanning" << '\n';
+      std::cout << "[Scanning]" << '\n';
       auto scanner = lox::Scanner(source);
       auto [tokens, scannerReport] = scanner.scanTokens();
 
-      std::cout << "Tokens:" << std::endl;
       for (const auto &token : tokens) {
         std::cout << token.toString() << std::endl;
       }

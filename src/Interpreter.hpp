@@ -24,9 +24,7 @@ namespace lox {
   private:
     Environment environment{};
 
-    auto inline evaluate(std::unique_ptr<Expr> const &expr) -> std::any {
-      return expr->accept(*this);
-    }
+    auto inline evaluate(Expr &expr) -> std::any { return expr.accept(*this); }
 
     static auto inline isTruthy(std::any const &object) -> bool {
       if (!object.has_value()) {
@@ -64,9 +62,7 @@ namespace lox {
       return false;
     }
 
-    auto inline execute(std::unique_ptr<Stmt> const &stmt) {
-      stmt->accept(*this);
-    }
+    auto inline execute(Stmt &stmt) { stmt.accept(*this); }
 
     static auto validateOpIsNumberThrows(Token op, const std::any &operand) {
       if (operand.type() == typeid(double)) {
@@ -121,11 +117,11 @@ namespace lox {
     }
 
     auto visitGroupingExpr(expr::Grouping const &expr) -> std::any override {
-      return evaluate(expr.expression);
+      return evaluate(*expr.expression);
     }
 
     auto visitUnaryExpr(expr::Unary const &expr) -> std::any override {
-      auto right = evaluate(expr.right);
+      auto right = evaluate(*expr.right);
 
       switch (expr.op.type) {
         case TokenType::MINUS:
@@ -142,8 +138,8 @@ namespace lox {
     }
 
     auto visitBinaryExpr(expr::Binary const &expr) -> std::any override {
-      auto left = evaluate(expr.left);
-      auto right = evaluate(expr.right);
+      auto left = evaluate(*expr.left);
+      auto right = evaluate(*expr.right);
 
       switch (expr.op.type) {
         case TokenType::GREATER:
@@ -199,7 +195,7 @@ namespace lox {
     }
 
     auto visitAssignExpr(expr::Assign const &expr) -> std::any override {
-      auto value = evaluate(expr.value);
+      auto value = evaluate(*expr.value);
       environment.assign(expr.name, value);
       return value;
     }
@@ -207,21 +203,20 @@ namespace lox {
 
     /* #region Stmt */
     auto visitExpressionStmt(stmt::Expression const &stmt) -> void override {
-      evaluate(stmt.expression);
+      evaluate(*stmt.expression);
     }
 
     auto visitPrintStmt(stmt::Print const &stmt) -> void override {
-      auto value = evaluate(stmt.expression);
-      std::cout << stringify(value);
+      auto value = evaluate(*stmt.expression);
+      std::cout << stringify(value) << std::endl;
     }
 
     auto visitVarStmt(stmt::Var const &stmt) -> void override {
-      auto value = std::make_optional<std::any>();
-      if (stmt.initializer.has_value()) {
-        value = evaluate(*stmt.initializer);
-      }
+      auto val = stmt.initializer.has_value()
+                     ? std::make_optional(evaluate(*stmt.initializer.value()))
+                     : std::make_optional<std::any>();
 
-      environment.define(stmt.name.lexeme, value);
+      environment.define(stmt.name.lexeme, val);
     }
     /* #endregion */
 
@@ -230,7 +225,7 @@ namespace lox {
 
       try {
         for (auto const &statement : statements) {
-          execute(statement);
+          execute(*statement);
         }
 
         report.status = InterpreterStatus::SUCCESS;

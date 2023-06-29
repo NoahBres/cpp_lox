@@ -9,23 +9,8 @@
 namespace lox {
   class AstPrinter : public expr::Visitor {
   public:
-    auto print(std::unique_ptr<expr::Expr> expr) -> std::string {
-      return std::any_cast<std::string>(expr->accept(*this));
-    }
-
-    auto parenthesize(
-        std::string const &name,
-        std::initializer_list<std::unique_ptr<expr::Expr>> const &exprs) {
-      std::string result = "(" + name;
-
-      for (auto const &expr : exprs) {
-        result += " ";
-        result += std::any_cast<std::string>(expr->accept(*this));
-      }
-
-      result += ")";
-
-      return result;
+    auto print(expr::Expr expr) -> std::string {
+      return std::any_cast<std::string>(expr.accept(*this));
     }
 
     template <typename... Args>
