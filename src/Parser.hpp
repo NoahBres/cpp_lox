@@ -271,7 +271,7 @@ namespace lox {
       auto statements = std::vector<std::optional<std::unique_ptr<Stmt>>>();
 
       while (!isAtEnd()) {
-        statements.push_back(declaration());
+        statements.push_back(std::move(declaration()));
       }
 
       report.status = ParserStatus::SUCCESS;
