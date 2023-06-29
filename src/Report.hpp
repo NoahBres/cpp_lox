@@ -4,14 +4,15 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "Token.hpp"
 
 namespace lox {
   class ReportError : public std::exception {
   private:
-    auto inline formatError(int line, const std::string &where,
-                            const std::string &message) {
+    static auto inline formatError(int line, const std::string &where,
+                                   const std::string &message) {
       return "[line " + std::to_string(line) + "] Error" + where + ": " +
              message;
     }
@@ -22,33 +23,36 @@ namespace lox {
     std::string message;
 
     ReportError(std::string message)
-        : token{std::nullopt}, line{std::nullopt}, message{message} {}
+        : token{std::nullopt}, line{std::nullopt}, message{std::move(message)} {
+    }
 
     ReportError(int line, std::string message)
-        : token{std::nullopt}, line{line}, message{message} {}
+        : token{std::nullopt}, line{line}, message{std::move(message)} {}
 
     ReportError(Token token, std::string message)
         : token{std::make_optional(token)}, line{token.line},
-          message{message} {};
+          message{std::move(message)} {};
 
-    auto what() const noexcept -> const char * override {
+    [[nodiscard]] auto what() const noexcept -> const char * override {
       return message.c_str();
     }
 
     auto toString() {
       if (token.has_value()) {
-        auto t = token.value();
+        auto val = token.value();
 
-        return formatError(t.line,
-                           t.type == TokenType::END_OF_FILE
+        return formatError(val.line,
+                           val.type == TokenType::END_OF_FILE
                                ? " at end"
-                               : " at '" + t.lexeme + "'",
+                               : " at '" + val.lexeme + "'",
                            message);
-      } else if (line.has_value()) {
-        return "[line " + std::to_string(line.value()) + "] Error:" + message;
-      } else {
-        return message;
       }
+
+      if (line.has_value()) {
+        return "[line " + std::to_string(line.value()) + "] Error:" + message;
+      }
+
+      return message;
     }
   };
 
@@ -59,7 +63,7 @@ namespace lox {
 
     Report(T status) : status{status} {};
 
-    auto addError(ReportError error) { errors.push_back(error); }
+    auto addError(const ReportError &error) { errors.push_back(error); }
 
     auto printErrors() {
       for (auto &err : errors) {

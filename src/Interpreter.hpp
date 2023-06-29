@@ -181,12 +181,15 @@ namespace lox {
           return std::any_cast<double>(left) * std::any_cast<double>(right);
 
         case TokenType::PLUS:
-          if (left.type() == typeid(double) && right.type() == typeid(double))
+          if (left.type() == typeid(double) && right.type() == typeid(double)) {
             return std::any_cast<double>(left) + std::any_cast<double>(right);
+          }
+
           if (left.type() == typeid(std::string) &&
-              right.type() == typeid(std::string))
+              right.type() == typeid(std::string)) {
             return std::any_cast<std::string>(left) +
                    std::any_cast<std::string>(right);
+          }
 
           throw ReportError(expr.op,
                             "Operands must be two numbers or two strings.");
@@ -214,8 +217,9 @@ namespace lox {
 
     auto visitVarStmt(stmt::Var const &stmt) -> void override {
       auto value = std::make_optional<std::any>();
-      if (stmt.initializer.has_value())
+      if (stmt.initializer.has_value()) {
         value = evaluate(*stmt.initializer);
+      }
 
       environment.define(stmt.name.lexeme, value);
     }

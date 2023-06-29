@@ -41,37 +41,42 @@ namespace lox {
                           std::any{}, line);
     }
 
-    inline auto addToken(lox::TokenType type, std::any literal) -> void {
+    inline auto addToken(lox::TokenType type, const std::any &literal) -> void {
       tokens.emplace_back(type, source.substr(start, current - start), literal,
                           line);
     }
 
     auto match(char expected) -> bool {
-      if (isAtEnd())
+      if (isAtEnd()) {
         return false;
-      if (source.at(current) != expected)
+      }
+      if (source.at(current) != expected) {
         return false;
+      }
 
       current++;
       return true;
     }
 
     inline auto peek() -> char {
-      if (isAtEnd())
+      if (isAtEnd()) {
         return '\0';
+      }
       return source.at(current);
     }
 
     inline auto peekNext() -> char {
-      if (current + 1 >= source.size())
+      if (current + 1 >= source.size()) {
         return '\0';
+      }
       return source.at(current + 1);
     }
 
     auto string() -> void {
       while (peek() != '"' && !isAtEnd()) {
-        if (peek() == '\n')
+        if (peek() == '\n') {
           line++;
+        }
         advance();
       }
 
@@ -89,16 +94,18 @@ namespace lox {
     }
 
     auto number() -> void {
-      while (std::isdigit(peek()))
+      while (std::isdigit(peek()) != 0) {
         advance();
+      }
 
       // Look for a fractional part
-      if (peek() == '.' && std::isdigit(peekNext())) {
+      if (peek() == '.' && (std::isdigit(peekNext()) != 0)) {
         // Consume the "."
         advance();
 
-        while (std::isdigit(peek()))
+        while (std::isdigit(peek()) != 0) {
           advance();
+        }
       }
 
       addToken(lox::TokenType::NUMBER,
@@ -106,15 +113,17 @@ namespace lox {
     }
 
     auto identifier() -> void {
-      while (std::isalnum(peek()))
+      while (std::isalnum(peek()) != 0) {
         advance();
+      }
 
       std::string text = source.substr(start, current - start);
       auto type = RESERVED_KEYWORDS.find(text);
-      if (type == RESERVED_KEYWORDS.end())
+      if (type == RESERVED_KEYWORDS.end()) {
         addToken(lox::TokenType::IDENTIFIER);
-      else
+      } else {
         addToken(type->second);
+      }
     }
 
     auto scanToken() -> void {
@@ -169,8 +178,9 @@ namespace lox {
         case '/':
           if (match('/')) {
             // A comment goes until the end of the line
-            while (peek() != '\n' && !isAtEnd())
+            while (peek() != '\n' && !isAtEnd()) {
               advance();
+            }
           } else {
             addToken(lox::TokenType::SLASH);
           }
@@ -187,9 +197,9 @@ namespace lox {
           string();
           break;
         default:
-          if (std::isdigit(c)) {
+          if (std::isdigit(c) != 0) {
             number();
-          } else if (std::isalpha(c)) {
+          } else if (std::isalpha(c) != 0) {
             identifier();
           } else {
             report.addError(ReportError(line, "Unexpected character."));
@@ -200,7 +210,7 @@ namespace lox {
     }
 
   public:
-    Scanner(std::string source) : source{source} {}
+    Scanner(std::string source) : source{std::move(source)} {}
 
     auto scanTokens() {
       while (!isAtEnd()) {
@@ -212,8 +222,8 @@ namespace lox {
       // Append EOF token
       tokens.emplace_back(lox::TokenType::END_OF_FILE, "", std::any{}, line);
 
-      report.status = report.errors.size() == 0 ? ScannerStatus::SUCCESS
-                                                : ScannerStatus::HAS_ERRORS;
+      report.status = report.errors.empty() ? ScannerStatus::SUCCESS
+                                            : ScannerStatus::HAS_ERRORS;
       return std::make_pair(tokens, report);
     }
   };

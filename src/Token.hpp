@@ -64,7 +64,7 @@ namespace lox {
           int line)
         : type(type), lexeme(lexeme), literal(literal), line(line) {}
 
-    auto toString() const -> std::string {
+    [[nodiscard]] auto toString() const -> std::string {
       std::string typeString;
       std::string literalString;
 
