@@ -4,4 +4,5 @@ Checks:
   cppcoreguidlines-*,
   clang-analyzer-*
   performance-*,
-  readability-*
+  readability-*,
+  -readability-identifier-length
