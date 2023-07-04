@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -16,15 +17,14 @@
 #include "Report.hpp"
 #include "Stmt.hpp"
 #include "Token.hpp"
+#include "utils.hpp"
 
 namespace lox {
   enum class InterpreterStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
 
-  class Interpreter : private expr::Visitor, private stmt::Visitor {
+  class Interpreter {
   private:
     Environment environment{};
-
-    auto inline evaluate(Expr &expr) -> std::any { return expr.accept(*this); }
 
     static auto inline isTruthy(std::any const &object) -> bool {
       if (!object.has_value()) {
@@ -61,9 +61,6 @@ namespace lox {
 
       return false;
     }
-
-    auto inline execute(Stmt &stmt) { stmt.accept(*this); }
-
     static auto validateOpIsNumberThrows(Token op, const std::any &operand) {
       if (operand.type() == typeid(double)) {
         return;
@@ -110,17 +107,32 @@ namespace lox {
       return std::any_cast<std::string>(obj);
     }
 
-  public:
+    auto inline evaluate(Expr &expr) -> std::any {
+      return std::visit(
+          [this](auto &&arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, expr::Literal> ||
+                          std::is_same_v<T, expr::Grouping> ||
+                          std::is_same_v<T, expr::Unary> ||
+                          std::is_same_v<T, expr::Variable> ||
+                          std::is_same_v<T, expr::Binary> ||
+                          std::is_same_v<T, expr::Assign>) {
+              return (*this)(arg);
+            } else {
+              return std::any{};
+            }
+          },
+          expr);
+    }
+
+    auto inline execute(Stmt &stmt) {
+      std::visit([this](auto &&arg) { return (*this)(arg); }, stmt);
+    }
+
     /* #region Expr */
-    auto visitLiteralExpr(expr::Literal const &expr) -> std::any override {
-      return expr.value;
-    }
-
-    auto visitGroupingExpr(expr::Grouping const &expr) -> std::any override {
-      return evaluate(*expr.expression);
-    }
-
-    auto visitUnaryExpr(expr::Unary const &expr) -> std::any override {
+    VISIT_EXPR(expr::Literal) { return expr.value; }
+    VISIT_EXPR(expr::Grouping) { return evaluate(*expr.expression); }
+    VISIT_EXPR(expr::Unary) {
       auto right = evaluate(*expr.right);
 
       switch (expr.op.type) {
@@ -132,12 +144,8 @@ namespace lox {
           throw std::runtime_error{"Invalid unary operator"};
       }
     }
-
-    auto visitVariableExpr(expr::Variable const &expr) -> std::any override {
-      return environment.get(expr.name);
-    }
-
-    auto visitBinaryExpr(expr::Binary const &expr) -> std::any override {
+    VISIT_EXPR(expr::Variable) { return environment.get(expr.name); }
+    VISIT_EXPR(expr::Binary) {
       auto left = evaluate(*expr.left);
       auto right = evaluate(*expr.right);
 
@@ -189,29 +197,25 @@ namespace lox {
 
           throw ReportError(expr.op,
                             "Operands must be two numbers or two strings.");
+        default:
+          throw std::runtime_error("Invalid binary operator");
       }
-
-      throw std::runtime_error("Invalid binary operator");
     }
-
-    auto visitAssignExpr(expr::Assign const &expr) -> std::any override {
+    VISIT_EXPR(expr::Assign) {
       auto value = evaluate(*expr.value);
       environment.assign(expr.name, value);
       return value;
     }
+
     /* #endregion */
 
     /* #region Stmt */
-    auto visitExpressionStmt(stmt::Expression const &stmt) -> void override {
-      evaluate(*stmt.expression);
-    }
-
-    auto visitPrintStmt(stmt::Print const &stmt) -> void override {
+    VISIT_STMT(stmt::Expression) { evaluate(*stmt.expression); }
+    VISIT_STMT(stmt::Print) {
       auto value = evaluate(*stmt.expression);
       std::cout << stringify(value) << std::endl;
     }
-
-    auto visitVarStmt(stmt::Var const &stmt) -> void override {
+    VISIT_STMT(stmt::Var) {
       auto val = stmt.initializer.has_value()
                      ? std::make_optional(evaluate(*stmt.initializer.value()))
                      : std::make_optional<std::any>();
@@ -220,6 +224,7 @@ namespace lox {
     }
     /* #endregion */
 
+  public:
     auto interpret(const std::vector<std::unique_ptr<Stmt>> &statements) {
       auto report = Report<InterpreterStatus>{InterpreterStatus::UNPROCESSED};
 
