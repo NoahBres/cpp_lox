@@ -7,12 +7,14 @@
 #include <optional>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "Expr.hpp"
 #include "Report.hpp"
 #include "Stmt.hpp"
 #include "Token.hpp"
+#include "utils.hpp"
 
 namespace lox {
   using expr::Expr, stmt::Stmt;
@@ -114,10 +116,9 @@ namespace lox {
         auto equals = previous();
         auto value = assignment();
 
-        if (auto *cast = dynamic_cast<expr::Variable *>(expr.get());
-            cast != nullptr) {
-          auto name = cast->name;
-          return std::make_unique<expr::Assign>(name, value);
+        if (auto *val = std::get_if<expr::Variable>(&(*expr))) {
+          auto name = val->name;
+          return make_unique_variant<expr::Expr, expr::Assign>(name, value);
         }
 
         report.addError(ReportError{equals, "Invalid assignment target."});
@@ -132,7 +133,7 @@ namespace lox {
       while (match({TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL})) {
         auto op = previous();
         auto right = comparison();
-        expr = std::make_unique<expr::Binary>(expr, op, right);
+        expr = make_unique_variant<expr::Expr, expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -145,7 +146,7 @@ namespace lox {
                     TokenType::LESS, TokenType::LESS_EQUAL})) {
         auto op = previous();
         auto right = term();
-        expr = std::make_unique<expr::Binary>(expr, op, right);
+        expr = make_unique_variant<expr::Expr, expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -157,7 +158,7 @@ namespace lox {
       while (match({TokenType::MINUS, TokenType::PLUS})) {
         auto op = previous();
         auto right = factor();
-        expr = std::make_unique<expr::Binary>(expr, op, right);
+        expr = make_unique_variant<expr::Expr, expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -169,7 +170,7 @@ namespace lox {
       while (match({TokenType::SLASH, TokenType::STAR})) {
         auto op = previous();
         auto right = unary();
-        expr = std::make_unique<expr::Binary>(expr, op, right);
+        expr = make_unique_variant<expr::Expr, expr::Binary>(expr, op, right);
       }
 
       return expr;
@@ -179,7 +180,7 @@ namespace lox {
       if (match({TokenType::BANG, TokenType::MINUS})) {
         auto op = previous();
         auto right = unary();
-        return std::make_unique<expr::Unary>(op, right);
+        return make_unique_variant<expr::Expr, expr::Unary>(op, right);
       }
 
       return primary();
@@ -187,27 +188,28 @@ namespace lox {
 
     auto primary() -> std::unique_ptr<Expr> {
       if (match({TokenType::FALSE})) {
-        return std::make_unique<expr::Literal>(false);
+        return make_unique_variant<expr::Expr, expr::Literal>(false);
       }
       if (match({TokenType::TRUE})) {
-        return std::make_unique<expr::Literal>(true);
+        return make_unique_variant<expr::Expr, expr::Literal>(true);
       }
       if (match({TokenType::NIL})) {
-        return std::make_unique<expr::Literal>(nullptr);
+        return make_unique_variant<expr::Expr, expr::Literal>(nullptr);
       }
 
       if (match({TokenType::NUMBER, TokenType::STRING})) {
-        return std::make_unique<expr::Literal>(previous().literal);
+        return make_unique_variant<expr::Expr, expr::Literal>(
+            previous().literal);
       }
 
       if (match({TokenType::IDENTIFIER})) {
-        return std::make_unique<expr::Variable>(previous());
+        return make_unique_variant<expr::Expr, expr::Variable>(previous());
       }
 
       if (match({TokenType::LEFT_PAREN})) {
         auto expr = expression();
         consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-        return std::make_unique<expr::Grouping>(expr);
+        return make_unique_variant<expr::Expr, expr::Grouping>(expr);
       }
 
       throw generateParserError(peek(), "Expect expression.");
@@ -224,14 +226,14 @@ namespace lox {
       auto value = expression();
       consume(TokenType::SEMICOLON, "Expect ';' after value.");
 
-      return std::make_unique<stmt::Print>(value);
+      return make_unique_variant<stmt::Stmt, stmt::Print>(value);
     }
 
     auto expressionStatement() -> std::unique_ptr<Stmt> {
       auto expr = expression();
       consume(TokenType::SEMICOLON, "Expect ';' after expression.");
 
-      return std::make_unique<stmt::Expression>(expr);
+      return make_unique_variant<stmt::Stmt, stmt::Expression>(expr);
     }
     /* #endregion */
 
@@ -243,7 +245,7 @@ namespace lox {
                              ? std::make_optional(expression())
                              : std::nullopt;
       consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
-      return std::make_unique<stmt::Var>(name, initializer);
+      return make_unique_variant<stmt::Stmt, stmt::Var>(name, initializer);
     }
 
     auto declaration() -> std::optional<std::unique_ptr<Stmt>> {
