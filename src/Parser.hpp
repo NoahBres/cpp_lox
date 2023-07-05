@@ -17,8 +17,6 @@
 #include "utils.hpp"
 
 namespace lox {
-  using expr::Expr, stmt::Stmt;
-
   enum class ParserStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
 
   class Parser {
@@ -108,9 +106,9 @@ namespace lox {
     }
 
     /* #region Expr */
-    auto expression() -> std::unique_ptr<Expr> { return assignment(); }
+    auto expression() -> std::unique_ptr<expr::Expr> { return assignment(); }
 
-    auto assignment() -> std::unique_ptr<Expr> {
+    auto assignment() -> std::unique_ptr<expr::Expr> {
       auto expr = equality();
       if (match(TokenType::EQUAL)) {
         auto equals = previous();
@@ -127,7 +125,7 @@ namespace lox {
       return expr;
     }
 
-    auto equality() -> std::unique_ptr<Expr> {
+    auto equality() -> std::unique_ptr<expr::Expr> {
       auto expr = comparison();
 
       while (match({TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL})) {
@@ -139,7 +137,7 @@ namespace lox {
       return expr;
     }
 
-    auto comparison() -> std::unique_ptr<Expr> {
+    auto comparison() -> std::unique_ptr<expr::Expr> {
       auto expr = term();
 
       while (match({TokenType::GREATER, TokenType::GREATER_EQUAL,
@@ -152,7 +150,7 @@ namespace lox {
       return expr;
     }
 
-    auto term() -> std::unique_ptr<Expr> {
+    auto term() -> std::unique_ptr<expr::Expr> {
       auto expr = factor();
 
       while (match({TokenType::MINUS, TokenType::PLUS})) {
@@ -164,7 +162,7 @@ namespace lox {
       return expr;
     }
 
-    auto factor() -> std::unique_ptr<Expr> {
+    auto factor() -> std::unique_ptr<expr::Expr> {
       auto expr = unary();
 
       while (match({TokenType::SLASH, TokenType::STAR})) {
@@ -176,7 +174,7 @@ namespace lox {
       return expr;
     }
 
-    auto unary() -> std::unique_ptr<Expr> {
+    auto unary() -> std::unique_ptr<expr::Expr> {
       if (match({TokenType::BANG, TokenType::MINUS})) {
         auto op = previous();
         auto right = unary();
@@ -186,7 +184,7 @@ namespace lox {
       return primary();
     }
 
-    auto primary() -> std::unique_ptr<Expr> {
+    auto primary() -> std::unique_ptr<expr::Expr> {
       if (match({TokenType::FALSE})) {
         return make_unique_variant<expr::Expr, expr::Literal>(false);
       }
@@ -217,19 +215,37 @@ namespace lox {
     /* #endregion */
 
     /* #region Stmt */
-    auto statement() -> std::unique_ptr<Stmt> {
-      return match({TokenType::PRINT}) ? printStatement()
-                                       : expressionStatement();
+    auto block() {
+      std::vector<std::unique_ptr<stmt::Stmt>> statements;
+
+      while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
+        statements.push_back(std::move(declaration()));
+      }
+
+      consume(TokenType::RIGHT_BRACE, "Expect '}' after block.");
+      return statements;
     }
 
-    auto printStatement() -> std::unique_ptr<Stmt> {
+    auto statement() -> std::unique_ptr<stmt::Stmt> {
+      if (match(TokenType::PRINT)) {
+        return printStatement();
+      }
+
+      if (match(TokenType::LEFT_BRACE)) {
+        return make_unique_variant<stmt::Stmt, stmt::Block>(std::move(block()));
+      }
+
+      return expressionStatement();
+    }
+
+    auto printStatement() -> std::unique_ptr<stmt::Stmt> {
       auto value = expression();
       consume(TokenType::SEMICOLON, "Expect ';' after value.");
 
       return make_unique_variant<stmt::Stmt, stmt::Print>(value);
     }
 
-    auto expressionStatement() -> std::unique_ptr<Stmt> {
+    auto expressionStatement() -> std::unique_ptr<stmt::Stmt> {
       auto expr = expression();
       consume(TokenType::SEMICOLON, "Expect ';' after expression.");
 
@@ -238,26 +254,26 @@ namespace lox {
     /* #endregion */
 
     /* #region Declaration */
-    auto varDeclaration() -> std::unique_ptr<Stmt> {
+    auto varDeclaration() -> std::unique_ptr<stmt::Stmt> {
       auto name = consume(TokenType::IDENTIFIER, "Expect variable name.");
 
       auto initializer = match({TokenType::EQUAL})
-                             ? std::make_optional(expression())
-                             : std::nullopt;
+                             ? expression()
+                             : std::unique_ptr<expr::Expr>();
       consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
       return make_unique_variant<stmt::Stmt, stmt::Var>(name, initializer);
     }
 
-    auto declaration() -> std::optional<std::unique_ptr<Stmt>> {
+    auto declaration() -> std::unique_ptr<stmt::Stmt> {
       try {
         if (match({TokenType::VAR})) {
-          return std::make_optional(varDeclaration());
+          return varDeclaration();
         }
 
-        return std::make_optional(statement());
+        return statement();
       } catch (ReportError error) {
         synchronize();
-        return std::nullopt;
+        return {};
       }
     }
     /* #endregion */
@@ -267,10 +283,8 @@ namespace lox {
         : tokens{std::move(tokens)}, report{Report(ParserStatus::UNPROCESSED)} {
     }
 
-    // auto parse() -> std::pair<std::optional<std::unique_ptr<Expr>>,
-    //                           Report<ParserStatus>> {
     auto parse() {
-      auto statements = std::vector<std::optional<std::unique_ptr<Stmt>>>();
+      auto statements = std::vector<std::unique_ptr<stmt::Stmt>>();
 
       while (!isAtEnd()) {
         statements.push_back(std::move(declaration()));

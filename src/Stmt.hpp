@@ -4,6 +4,7 @@
 #include <memory>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "Expr.hpp"
 #include "Token.hpp"
@@ -13,29 +14,37 @@ namespace lox::stmt {
   struct Print;
   struct Expression;
   struct Var;
+  struct Block;
 
-  using Stmt = std::variant<Print, Expression, Var>;
+  using Stmt = std::variant<Print, Expression, Var, Block>;
   /* #endregion */
 
   struct Print {
-    std::unique_ptr<expr::Expr> expression;
+    std::unique_ptr<expr::Expr> const expression;
 
     Print(std::unique_ptr<expr::Expr> &expression)
         : expression{std::move(expression)} {};
   };
 
   struct Expression {
-    std::unique_ptr<expr::Expr> expression;
+    std::unique_ptr<expr::Expr> const expression;
 
     Expression(std::unique_ptr<expr::Expr> &expression)
         : expression{std::move(expression)} {};
   };
 
   struct Var {
-    Token name;
-    std::optional<std::unique_ptr<expr::Expr>> initializer;
+    Token const name;
+    std::unique_ptr<expr::Expr> const initializer;
 
-    Var(Token name, std::optional<std::unique_ptr<expr::Expr>> &initializer)
+    Var(Token &name, std::unique_ptr<expr::Expr> &initializer)
         : name{std::move(name)}, initializer{std::move(initializer)} {};
+  };
+
+  struct Block {
+    std::vector<std::unique_ptr<Stmt>> const statements;
+
+    Block(std::vector<std::unique_ptr<Stmt>> statements)
+        : statements{std::move(statements)} {}
   };
 } // namespace lox::stmt

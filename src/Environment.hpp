@@ -10,16 +10,26 @@
 namespace lox {
   class Environment {
   private:
+    Environment *const enclosing; // Enclosing scope is a raw pointer because
+                                  // this environment doesn't own its parent.
+                                  // Parent's lifetime should exceed this
     std::unordered_map<std::string, std::any> values;
 
   public:
+    Environment() : enclosing{nullptr} {}
+    Environment(Environment *enclosing) : enclosing{enclosing} {}
+
     auto define(std::string const &name, std::any const &value) {
       values[name] = value;
     }
 
-    auto get(Token const &name) {
+    [[nodiscard]] auto get(Token const &name) const -> std::any {
       if (values.contains(name.lexeme)) {
-        return values[name.lexeme];
+        return values.at(name.lexeme);
+      }
+
+      if (enclosing != nullptr) {
+        return enclosing->get(name);
       }
 
       throw ReportError(name, "Undefined variable '" + name.lexeme + "'.");
@@ -29,6 +39,10 @@ namespace lox {
       if (values.contains(name.lexeme)) {
         values[name.lexeme] = value;
         return;
+      }
+
+      if (enclosing != nullptr) {
+        enclosing->assign(name, value);
       }
 
       throw ReportError(name, "Undefined variable '" + name.lexeme + "'.");

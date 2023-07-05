@@ -24,9 +24,9 @@ namespace lox {
 
   class Interpreter {
   private:
-    Environment environment{};
+    std::unique_ptr<Environment> environment = std::make_unique<Environment>();
 
-    static auto inline isTruthy(std::any const &object) -> bool {
+    static auto inline isTruthy(std::any const &object) {
       if (!object.has_value()) {
         return false;
       }
@@ -38,7 +38,7 @@ namespace lox {
       return true;
     }
 
-    static auto inline isEqual(std::any const &a, std::any const &b) -> bool {
+    static auto inline isEqual(std::any const &a, std::any const &b) {
       if (!a.has_value() && !b.has_value()) {
         return true;
       }
@@ -103,11 +103,10 @@ namespace lox {
                                   : std::string("nil");
       }
 
-      // TODO: Fix this casting
       return std::any_cast<std::string>(obj);
     }
 
-    auto inline evaluate(Expr &expr) -> std::any {
+    auto inline evaluate(expr::Expr &expr) {
       return std::visit(
           [this](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -125,8 +124,27 @@ namespace lox {
           expr);
     }
 
-    auto inline execute(Stmt &stmt) {
+    auto inline execute(stmt::Stmt const &stmt) {
       std::visit([this](auto &&arg) { return (*this)(arg); }, stmt);
+    }
+
+    auto
+    executeBlock(std::vector<std::unique_ptr<stmt::Stmt>> const &statements,
+                 std::unique_ptr<Environment> environment) {
+      auto prev = std::move(this->environment);
+
+      try {
+        this->environment = std::move(environment);
+
+        std::ranges::for_each(statements,
+                              [this](auto const &stmt) { execute(*stmt); });
+      } catch (std::exception const &e) {
+        // Reset the environment on exception
+        this->environment = std::move(prev);
+        throw;
+      }
+
+      this->environment = std::move(prev);
     }
 
     /* #region Expr */
@@ -144,7 +162,7 @@ namespace lox {
           throw std::runtime_error{"Invalid unary operator"};
       }
     }
-    VISIT_EXPR(expr::Variable) { return environment.get(expr.name); }
+    VISIT_EXPR(expr::Variable) { return environment->get(expr.name); }
     VISIT_EXPR(expr::Binary) {
       auto left = evaluate(*expr.left);
       auto right = evaluate(*expr.right);
@@ -203,10 +221,9 @@ namespace lox {
     }
     VISIT_EXPR(expr::Assign) {
       auto value = evaluate(*expr.value);
-      environment.assign(expr.name, value);
+      environment->assign(expr.name, value);
       return value;
     }
-
     /* #endregion */
 
     /* #region Stmt */
@@ -216,23 +233,24 @@ namespace lox {
       std::cout << stringify(value) << std::endl;
     }
     VISIT_STMT(stmt::Var) {
-      auto val = stmt.initializer.has_value()
-                     ? std::make_optional(evaluate(*stmt.initializer.value()))
-                     : std::make_optional<std::any>();
+      auto val = stmt.initializer ? evaluate(*stmt.initializer) : std::any{};
+      environment->define(stmt.name.lexeme, val);
+    }
 
-      environment.define(stmt.name.lexeme, val);
+    VISIT_STMT(stmt::Block) {
+      executeBlock(stmt.statements,
+                   std::make_unique<Environment>(*environment));
     }
     /* #endregion */
 
   public:
-    auto interpret(const std::vector<std::unique_ptr<Stmt>> &statements) {
+    auto interpret(std::ranges::input_range auto &&statements) {
       auto report = Report<InterpreterStatus>{InterpreterStatus::UNPROCESSED};
 
       try {
-        for (auto const &statement : statements) {
-          execute(*statement);
-        }
-
+        std::ranges::for_each(
+            statements,
+            [this](std::unique_ptr<stmt::Stmt> &stmt) { execute(*stmt); });
         report.status = InterpreterStatus::SUCCESS;
       } catch (ReportError &err) {
         report.addError(err);
