@@ -109,7 +109,8 @@ namespace lox {
     auto expression() -> std::unique_ptr<expr::Expr> { return assignment(); }
 
     auto assignment() -> std::unique_ptr<expr::Expr> {
-      auto expr = equality();
+      auto expr = orExpr();
+
       if (match(TokenType::EQUAL)) {
         auto equals = previous();
         auto value = assignment();
@@ -120,6 +121,31 @@ namespace lox {
         }
 
         report.addError(ReportError{equals, "Invalid assignment target."});
+      }
+
+      return expr;
+    }
+
+    auto orExpr() -> std::unique_ptr<expr::Expr> {
+      std::cout << "or expr\n";
+      auto expr = andExpr();
+
+      while (match(TokenType::OR)) {
+        auto op = previous();
+        auto right = andExpr();
+        expr = make_unique_variant<expr::Expr, expr::Logical>(expr, op, right);
+      }
+
+      return expr;
+    }
+
+    auto andExpr() -> std::unique_ptr<expr::Expr> {
+      auto expr = equality();
+
+      while (match(TokenType::AND)) {
+        auto op = previous();
+        auto right = equality();
+        expr = make_unique_variant<expr::Expr, expr::Logical>(expr, op, right);
       }
 
       return expr;
@@ -227,6 +253,10 @@ namespace lox {
     }
 
     auto statement() -> std::unique_ptr<stmt::Stmt> {
+      if (match(TokenType::IF)) {
+        return ifStatement();
+      }
+
       if (match(TokenType::PRINT)) {
         return printStatement();
       }
@@ -236,6 +266,19 @@ namespace lox {
       }
 
       return expressionStatement();
+    }
+
+    auto ifStatement() -> std::unique_ptr<stmt::Stmt> {
+      consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
+      auto condition = expression();
+      consume(TokenType::RIGHT_PAREN, "Expect ')' after if condition.");
+
+      auto thenBranch = statement();
+      auto elseBranch =
+          match(TokenType::ELSE) ? statement() : std::unique_ptr<stmt::Stmt>();
+
+      return make_unique_variant<stmt::Stmt, stmt::If>(condition, thenBranch,
+                                                       elseBranch);
     }
 
     auto printStatement() -> std::unique_ptr<stmt::Stmt> {

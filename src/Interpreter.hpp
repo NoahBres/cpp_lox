@@ -78,7 +78,7 @@ namespace lox {
       throw ReportError(std::move(op), "Operands must be numbers.");
     }
 
-    auto stringify(std::any obj) {
+    static auto stringify(std::any obj) {
       if (!obj.has_value()) {
         return std::string("nil");
       }
@@ -97,12 +97,6 @@ namespace lox {
                                         : std::string("false");
       }
 
-      if (obj.type() == typeid(std::optional<std::any>)) {
-        auto value = std::any_cast<std::optional<std::any>>(obj);
-        return value->has_value() ? stringify(value.value())
-                                  : std::string("nil");
-      }
-
       return std::any_cast<std::string>(obj);
     }
 
@@ -111,6 +105,7 @@ namespace lox {
           [this](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, expr::Literal> ||
+                          std::is_same_v<T, expr::Logical> ||
                           std::is_same_v<T, expr::Grouping> ||
                           std::is_same_v<T, expr::Unary> ||
                           std::is_same_v<T, expr::Variable> ||
@@ -149,6 +144,21 @@ namespace lox {
 
     /* #region Expr */
     VISIT_EXPR(expr::Literal) { return expr.value; }
+    VISIT_EXPR(expr::Logical) {
+      auto left = evaluate(*expr.left);
+
+      if (expr.op.type == TokenType::OR) {
+        if (isTruthy(left)) {
+          return left;
+        }
+      } else {
+        if (!isTruthy(left)) {
+          return left;
+        }
+      }
+
+      return evaluate(*expr.right);
+    }
     VISIT_EXPR(expr::Grouping) { return evaluate(*expr.expression); }
     VISIT_EXPR(expr::Unary) {
       auto right = evaluate(*expr.right);
@@ -240,6 +250,14 @@ namespace lox {
     VISIT_STMT(stmt::Block) {
       executeBlock(stmt.statements,
                    std::make_unique<Environment>(*environment));
+    }
+
+    VISIT_STMT(stmt::If) {
+      if (isTruthy(evaluate(*stmt.condition))) {
+        execute(*stmt.thenBranch);
+      } else if (stmt.elseBranch) {
+        execute(*stmt.elseBranch);
+      }
     }
     /* #endregion */
 
