@@ -2,6 +2,7 @@
 
 #include <any>
 #include <string>
+#include <utility>
 
 namespace lox {
   enum class TokenType {
@@ -60,9 +61,9 @@ namespace lox {
     const std::any literal;
     const int line;
 
-    Token(TokenType type, const std::string &lexeme, const std::any &literal,
-          int line)
-        : type(type), lexeme(lexeme), literal(literal), line(line) {}
+    Token(TokenType type, std::string lexeme, std::any literal, int line)
+        : type(type), lexeme(std::move(lexeme)), literal(std::move(literal)),
+          line(line) {}
 
     [[nodiscard]] auto toString() const -> std::string {
       std::string typeString;
