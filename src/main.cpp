@@ -30,7 +30,7 @@ print b;
 print c;
 )");
   std::cout << "\n\n--------------------------\n";
-  lox::Lox::run(R"(print "hi" or 2; print nil;)");
+  lox::Lox::run(R"(print "hi" or 2; print nil or "yes"; print nil)");
 
   // if (argc > 2) {
   //   std::cout << "Usage: cpp_lox [script]\n";
