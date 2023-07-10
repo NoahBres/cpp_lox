@@ -50,8 +50,9 @@ namespace lox {
       /* #region Interpreter */
       std::cout << "Interpreter:\n";
       auto interpreter = Interpreter{};
-      interpreter.interpret(std::ranges::filter_view(
-          statements, [](auto &stmt) { return stmt != nullptr; }));
+      interpreter.interpret(statements |
+                            std::ranges::views::filter(
+                                [](auto &stmt) { return stmt != nullptr; }));
       /* #endregion */
     }
 
