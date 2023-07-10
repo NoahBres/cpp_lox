@@ -127,7 +127,6 @@ namespace lox {
     }
 
     auto orExpr() -> std::unique_ptr<expr::Expr> {
-      std::cout << "or expr\n";
       auto expr = andExpr();
 
       while (match(TokenType::OR)) {
@@ -218,7 +217,7 @@ namespace lox {
         return make_unique_variant<expr::Expr, expr::Literal>(true);
       }
       if (match({TokenType::NIL})) {
-        return make_unique_variant<expr::Expr, expr::Literal>(nullptr);
+        return make_unique_variant<expr::Expr, expr::Literal>(LiteralVal{});
       }
 
       if (match({TokenType::NUMBER, TokenType::STRING})) {
