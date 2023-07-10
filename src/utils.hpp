@@ -4,7 +4,7 @@
 #include <variant>
 
 #define VISIT_STMT(arg) auto operator()(arg const &stmt)->void
-#define VISIT_EXPR(arg) auto operator()(arg const &expr)->std::any
+#define VISIT_EXPR(arg) auto operator()(arg const &expr)->LiteralVal
 
 template <typename Variant, typename Child, typename... Args>
 auto constexpr inline make_unique_variant(Args &&...args) {

@@ -7,6 +7,11 @@ Clang version: 16.0.4
 
 - Add C++20 modules
 - Remove exceptions
+- clang sanitizer
+- figure out how to enforce expr check in visit in eval in interpreter.hpp
+- switch TokenType to variant?
+- move overloaded in Token to util?
+- clangtidy east const?
 
 ## Useful VSCode extension:
 
