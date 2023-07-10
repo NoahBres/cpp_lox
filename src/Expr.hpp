@@ -70,9 +70,9 @@ namespace lox::expr {
   };
 
   struct Literal {
-    std::any const value;
+    LiteralVal const value;
 
-    Literal(std::any value) : value{std::move(value)} {}
+    Literal(LiteralVal value) : value{std::move(value)} {}
   };
 
   struct Logical {

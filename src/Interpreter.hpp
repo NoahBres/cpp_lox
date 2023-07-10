@@ -9,6 +9,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "Environment.hpp"
@@ -26,65 +27,69 @@ namespace lox {
   private:
     std::unique_ptr<Environment> environment = std::make_unique<Environment>();
 
-    static auto inline isTruthy(std::any const &object) {
-      if (!object.has_value()) {
-        return false;
-      }
-
-      if (object.type() == typeid(bool)) {
-        return std::any_cast<bool>(object);
-      }
-
-      return true;
+    static auto inline isTruthy(LiteralVal const &object) {
+      return std::visit(
+          overloaded{[](std::monostate const &arg) { return false; },
+                     [](std::string const &arg) { return !arg.empty(); },
+                     [](bool const &arg) { return arg; },
+                     [](double const &arg) { return arg != 0; }},
+          object);
     }
 
-    static auto inline isEqual(std::any const &a, std::any const &b) {
-      if (!a.has_value() && !b.has_value()) {
+    static auto inline isEqual(LiteralVal const &a, LiteralVal const &b) {
+      // If both null
+      if (std::holds_alternative<std::monostate>(a) &&
+          std::holds_alternative<std::monostate>(b)) {
         return true;
       }
 
-      if (!a.has_value()) {
+      // If only a is null
+      if (std::holds_alternative<std::monostate>(a)) {
         return false;
       }
 
-      if (a.type() == typeid(std::string) && b.type() == typeid(std::string)) {
-        return std::any_cast<std::string>(a) == std::any_cast<std::string>(b);
+      // If a and b are strings
+      if (std::holds_alternative<std::string>(a) &&
+          std::holds_alternative<std::string>(b)) {
+        return std::get<std::string>(a) == std::get<std::string>(a);
       }
 
-      if (a.type() == typeid(double) && b.type() == typeid(double)) {
-        return std::any_cast<double>(a) == std::any_cast<double>(b);
+      // If a and b are doubles
+      if (std::holds_alternative<double>(a) &&
+          std::holds_alternative<double>(b)) {
+        return std::get<double>(a) == std::get<double>(a);
       }
 
-      if (a.type() == typeid(bool) && b.type() == typeid(bool)) {
-        return std::any_cast<bool>(a) == std::any_cast<bool>(b);
+      // If a and b are bools
+      if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
+        return std::get<bool>(a) == std::get<bool>(a);
       }
 
       return false;
     }
-    static auto validateOpIsNumberThrows(Token op, const std::any &operand) {
-      if (operand.type() == typeid(double)) {
+    static auto validateOpIsNumberThrows(Token op, LiteralVal const &operand) {
+      if (std::holds_alternative<double>(operand)) {
         return;
       }
 
       throw ReportError(std::move(op), "Operand must be a number");
     }
 
-    static auto validateOpIsNumberThrows(Token op, const std::any &left,
-                                         const std::any &right) {
-      if (left.type() == typeid(double) && right.type() == typeid(double)) {
+    static auto validateOpIsNumberThrows(Token op, LiteralVal const &left,
+                                         LiteralVal const &right) {
+      if (std::holds_alternative<double>(left) &&
+          std::holds_alternative<double>(right)) {
         return;
       }
 
       throw ReportError(std::move(op), "Operands must be numbers.");
     }
 
-    static auto stringify(std::any obj) {
-      if (!obj.has_value()) {
-        return std::string("nil");
-      }
+    static auto stringify(LiteralVal const &obj) {
+      // Special handling to remove decimal from 0.0 double
+      if (std::holds_alternative<double>(obj)) {
 
-      if (obj.type() == typeid(double)) {
-        auto text = std::to_string(std::any_cast<double>(obj));
+        auto text = to_string(obj);
         if (text.ends_with(".0")) {
           text = text.substr(0, text.length() - 2);
         }
@@ -92,12 +97,7 @@ namespace lox {
         return text;
       }
 
-      if (obj.type() == typeid(bool)) {
-        return std::any_cast<bool>(obj) ? std::string("true")
-                                        : std::string("false");
-      }
-
-      return std::any_cast<std::string>(obj);
+      return to_string(obj);
     }
 
     auto inline evaluate(expr::Expr &expr) {
@@ -113,7 +113,7 @@ namespace lox {
                           std::is_same_v<T, expr::Assign>) {
               return (*this)(arg);
             } else {
-              return std::any{};
+              return LiteralVal{};
             }
           },
           expr);
@@ -165,7 +165,7 @@ namespace lox {
 
       switch (expr.op.type) {
         case TokenType::MINUS:
-          return -std::any_cast<double>(right);
+          return -std::get<double>(right);
         case TokenType::BANG:
           return !isTruthy(right);
         default:
@@ -180,19 +180,19 @@ namespace lox {
       switch (expr.op.type) {
         case TokenType::GREATER:
           validateOpIsNumberThrows(expr.op, left, right);
-          return std::any_cast<double>(left) > std::any_cast<double>(right);
+          return std::get<double>(left) > std::get<double>(right);
 
         case TokenType::GREATER_EQUAL:
           validateOpIsNumberThrows(expr.op, left, right);
-          return std::any_cast<double>(left) >= std::any_cast<double>(right);
+          return std::get<double>(left) >= std::get<double>(right);
 
         case TokenType::LESS:
           validateOpIsNumberThrows(expr.op, left, right);
-          return std::any_cast<double>(left) < std::any_cast<double>(right);
+          return std::get<double>(left) < std::get<double>(right);
 
         case TokenType::LESS_EQUAL:
           validateOpIsNumberThrows(expr.op, left, right);
-          return std::any_cast<double>(left) <= std::any_cast<double>(right);
+          return std::get<double>(left) <= std::get<double>(right);
 
         case TokenType::BANG_EQUAL:
           return !isEqual(left, right);
@@ -202,25 +202,27 @@ namespace lox {
 
         case TokenType::MINUS:
           validateOpIsNumberThrows(expr.op, right);
-          return std::any_cast<double>(left) - std::any_cast<double>(right);
+          return std::get<double>(left) - std::get<double>(right);
 
         case TokenType::SLASH:
           validateOpIsNumberThrows(expr.op, left, right);
-          return std::any_cast<double>(left) / std::any_cast<double>(right);
+          return std::get<double>(left) / std::get<double>(right);
 
         case TokenType::STAR:
           validateOpIsNumberThrows(expr.op, left, right);
-          return std::any_cast<double>(left) * std::any_cast<double>(right);
+          return std::get<double>(left) * std::get<double>(right);
 
         case TokenType::PLUS:
-          if (left.type() == typeid(double) && right.type() == typeid(double)) {
-            return std::any_cast<double>(left) + std::any_cast<double>(right);
+          // If left and right are doubles
+          if (std::holds_alternative<double>(left) &&
+              std::holds_alternative<double>(right)) {
+            return std::get<double>(left) + std::get<double>(right);
           }
 
-          if (left.type() == typeid(std::string) &&
-              right.type() == typeid(std::string)) {
-            return std::any_cast<std::string>(left) +
-                   std::any_cast<std::string>(right);
+          // If left and right are strings
+          if (std::holds_alternative<std::string>(left) &&
+              std::holds_alternative<std::string>(right)) {
+            return std::get<std::string>(left) + std::get<std::string>(right);
           }
 
           throw ReportError(expr.op,
@@ -243,7 +245,7 @@ namespace lox {
       std::cout << stringify(value) << std::endl;
     }
     VISIT_STMT(stmt::Var) {
-      auto val = stmt.initializer ? evaluate(*stmt.initializer) : std::any{};
+      auto val = stmt.initializer ? evaluate(*stmt.initializer) : LiteralVal{};
       environment->define(stmt.name.lexeme, val);
     }
 

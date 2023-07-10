@@ -3,8 +3,30 @@
 #include <any>
 #include <string>
 #include <utility>
+#include <variant>
+
+#include "Expr.hpp"
+
+// helper type for the visitor #4
+template <class... Ts> struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 namespace lox {
+  using LiteralVal = std::variant<std::monostate, std::string, bool, double>;
+  [[nodiscard]] static auto to_string(LiteralVal const &literal)
+      -> std::string {
+    using namespace std::string_literals;
+    return std::visit(
+        overloaded{[](std::monostate const &arg) { return "nil"s; },
+                   [](std::string const &arg) { return arg; },
+                   [](bool const &arg) { return arg ? "true"s : "false"s; },
+                   [](double const &arg) { return std::to_string(arg); }},
+        literal);
+  }
+
   enum class TokenType {
     // Single-character tokens.
     LEFT_PAREN,
@@ -58,10 +80,10 @@ namespace lox {
   struct Token {
     const TokenType type;
     const std::string lexeme;
-    const std::any literal;
+    const LiteralVal literal;
     const int line;
 
-    Token(TokenType type, std::string lexeme, std::any literal, int line)
+    Token(TokenType type, std::string lexeme, LiteralVal literal, int line)
         : type(type), lexeme(std::move(lexeme)), literal(std::move(literal)),
           line(line) {}
 
@@ -74,19 +96,11 @@ namespace lox {
           literalString = lexeme;
           break;
         case (TokenType::STRING):
-          literalString = std::any_cast<std::string>(literal);
-          break;
         case (TokenType::NUMBER):
-          literalString = std::to_string(std::any_cast<double>(literal));
-          break;
         case (TokenType::TRUE):
-          literalString = "true";
-          break;
         case (TokenType::FALSE):
-          literalString = "false";
-          break;
         default:
-          literalString = "nil";
+          literalString = ::lox::to_string(literal);
       }
 
       switch (type) {

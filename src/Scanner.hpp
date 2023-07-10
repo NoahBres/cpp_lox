@@ -6,6 +6,7 @@
 #include "Token.hpp"
 #include <unordered_map>
 #include <utility>
+#include <variant>
 
 namespace lox {
   enum class ScannerStatus { UNPROCESSED, SUCCESS, HAS_ERRORS };
@@ -38,10 +39,11 @@ namespace lox {
 
     inline auto addToken(lox::TokenType type) -> void {
       tokens.emplace_back(type, source.substr(start, current - start),
-                          std::any{}, line);
+                          LiteralVal{}, line);
     }
 
-    inline auto addToken(lox::TokenType type, const std::any &literal) -> void {
+    inline auto addToken(lox::TokenType type, LiteralVal const &literal)
+        -> void {
       tokens.emplace_back(type, source.substr(start, current - start), literal,
                           line);
     }
@@ -220,7 +222,7 @@ namespace lox {
       }
 
       // Append EOF token
-      tokens.emplace_back(lox::TokenType::END_OF_FILE, "", std::any{}, line);
+      tokens.emplace_back(lox::TokenType::END_OF_FILE, "", LiteralVal{}, line);
 
       report.status = report.errors.empty() ? ScannerStatus::SUCCESS
                                             : ScannerStatus::HAS_ERRORS;

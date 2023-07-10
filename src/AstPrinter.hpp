@@ -7,6 +7,7 @@
 #include <variant>
 
 #include "Expr.hpp"
+#include "Token.hpp"
 #include "utils.hpp"
 
 namespace lox {
@@ -18,7 +19,7 @@ namespace lox {
     auto parenthesize(std::string const &name, Exprs &&...exprs) {
       std::string result = "(" + name;
 
-      ((result += " " + std::any_cast<std::string>(visit(exprs))), ...);
+      ((result += " " + std::get<std::string>(visit(exprs))), ...);
 
       result += ")";
 
@@ -33,11 +34,7 @@ namespace lox {
       return parenthesize("group", *expr.expression);
     }
 
-    VISIT_EXPR(expr::Literal) {
-      return expr.value.has_value()
-                 ? std::to_string(std::any_cast<double>(expr.value))
-                 : "nil";
-    }
+    VISIT_EXPR(expr::Literal) { return to_string(expr.value); }
 
     VISIT_EXPR(expr::Unary) {
       return parenthesize(expr.op.lexeme, *expr.right);
@@ -69,13 +66,13 @@ namespace lox {
 
     VISIT_EXPR(expr::Super) { return expr.keyword.lexeme; }
 
-    auto visit(expr::Expr &expr) -> std::any {
+    auto visit(expr::Expr const &expr) -> LiteralVal {
       return std::visit([this](auto &&arg) { return (*this)(arg); }, expr);
     }
 
   public:
-    auto print(expr::Expr &expr) -> std::string {
-      return std::any_cast<std::string>(visit(expr));
+    auto print(expr::Expr const &expr) -> std::string {
+      return std::get<std::string>(visit(expr));
     }
   };
 } // namespace lox
