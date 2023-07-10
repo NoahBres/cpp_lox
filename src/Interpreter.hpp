@@ -248,17 +248,20 @@ namespace lox {
       auto val = stmt.initializer ? evaluate(*stmt.initializer) : LiteralVal{};
       environment->define(stmt.name.lexeme, val);
     }
-
     VISIT_STMT(stmt::Block) {
       executeBlock(stmt.statements,
                    std::make_unique<Environment>(*environment));
     }
-
     VISIT_STMT(stmt::If) {
       if (isTruthy(evaluate(*stmt.condition))) {
         execute(*stmt.thenBranch);
       } else if (stmt.elseBranch) {
         execute(*stmt.elseBranch);
+      }
+    }
+    VISIT_STMT(stmt::While) {
+      while (isTruthy(evaluate(stmt.condition))) {
+        execute(stmt.body);
       }
     }
     /* #endregion */

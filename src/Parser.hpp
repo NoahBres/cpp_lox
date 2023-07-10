@@ -260,6 +260,10 @@ namespace lox {
         return printStatement();
       }
 
+      if (match(TokenType::WHILE)) {
+        return whileStatement();
+      }
+
       if (match(TokenType::LEFT_BRACE)) {
         return make_unique_variant<stmt::Stmt, stmt::Block>(std::move(block()));
       }
@@ -304,6 +308,15 @@ namespace lox {
                              : std::unique_ptr<expr::Expr>();
       consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
       return make_unique_variant<stmt::Stmt, stmt::Var>(name, initializer);
+    }
+
+    auto whileStatement() -> std::unique_ptr<stmt::Stmt> {
+      consume(TokenType::LEFT_PAREN, "Expect '() after 'while'.");
+      auto condition = expression();
+      consume(TokenType::RIGHT_PAREN, "Expect ')' after condition.");
+      auto body = statement();
+
+      return make_unique_variant<stmt::Stmt, stmt::While>(condition, body);
     }
 
     auto declaration() -> std::unique_ptr<stmt::Stmt> {

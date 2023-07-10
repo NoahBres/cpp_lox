@@ -16,8 +16,9 @@ namespace lox::stmt {
   struct Var;
   struct Block;
   struct If;
+  struct While;
 
-  using Stmt = std::variant<Print, Expression, Var, Block, If>;
+  using Stmt = std::variant<Print, Expression, Var, Block, If, While>;
   /* #endregion */
 
   struct Print {
@@ -58,5 +59,14 @@ namespace lox::stmt {
         : condition{std::move(condition)}, thenBranch{std::move(thenBranch)},
           elseBranch{std::move(elseBranch)} {}
   };
+
+  struct While {
+    std::unique_ptr<expr::Expr> const condition;
+    std::unique_ptr<stmt::Stmt> const body;
+
+    While(std::unique_ptr<expr::Expr> condition,
+          std::unique_ptr<stmt::Stmt> body)
+        : condition{std::move(condition)}, body{std::move(body)} {}
+  }
 
 } // namespace lox::stmt
