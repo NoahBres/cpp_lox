@@ -29,7 +29,6 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/cpp_lox",
       "args": [],
-      "stopAtEntry": false,
       "cwd": "${fileDirname}",
       "environment": [],
       "externalConsole": false,
